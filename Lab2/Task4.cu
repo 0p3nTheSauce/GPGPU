@@ -63,8 +63,8 @@ void checkResult(float *hostRef, float *gpuRef, const int N)
     }
 }
 
-// grid 2D block 2D
-__global__ void sumMatrixOnGPU2D(float *A, float *B, float *C, int NX, int NY)
+// grid 1D block 2D
+__global__ void sumMatrixOnGPU1D(float *A, float *B, float *C, int NX, int NY)
 {   //adjusted for 1D grid
     unsigned int ix = blockIdx.x * blockDim.x + threadIdx.x;
     unsigned int iy = threadIdx.y;
@@ -158,7 +158,7 @@ int main(int argc, char **argv)
 
 	// execute the kernel
     checkCudaErrors(cudaDeviceSynchronize());
-    sumMatrixOnGPU2D<<<grid, block>>>(d_MatA, d_MatB, d_MatC, nx, ny);
+    sumMatrixOnGPU1D<<<grid, block>>>(d_MatA, d_MatB, d_MatC, nx, ny);
     cudaEventRecord(stop);
 	checkCudaErrors(cudaEventSynchronize(stop));
 	cudaEventElapsedTime(&milli, start, stop);  // time random generation

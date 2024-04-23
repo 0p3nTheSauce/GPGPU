@@ -76,15 +76,17 @@ __global__ void sumMatrixOnGPU2D(float *A, float *B, float *C, int NX, int NY)
     }
 }
 
-dim3 calculateGridSize(int NX, int NY, int blockX, int blockY)
+dim3 calculateGridSize(int NX, int NY, int blockX, int blockY, int incFac)
 {   //ensure that grid size is rounded up:
     //  e.g. if Fgrid is 6.25, Igrid would have been 6, grid becomes 7
     float nx = NX;
     float ny = NY;
     float blockx = blockX;
     float blocky = blockY;
-    float Fgrid = (nx * ny) / (blocky * blocky);
-    int Igrid = (NX * NY) / (blockX * blockY);
+    //decrease tge number of blocks to decrease the number of threads 
+    //decrease by incFac x 
+    float Fgrid = ((nx * ny) / incFac) / (blocky * blocky);
+    int Igrid = ((NX * NY) / incFac) / (blockX * blockY);
     if (Fgrid > Igrid)
     {
         Igrid++; 
