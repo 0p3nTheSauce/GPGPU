@@ -11,9 +11,9 @@ dim3 calculateGridSize(int NX, int NY, int blockX, int blockY)
     float ny = NY;
     float blockx = blockX;
     float blocky = blockY;
-    float Fgrid = (nx * ny) / (blocky * blocky);
-    int Igrid = (NX * NY) / (blockX * blockY);
-    // printf("Igrid: %d\n", Igrid);
+    //decrease the number of blocks to decrease the number of threads 
+    float Fgrid = ((nx * ny) / 2) / (blocky * blocky);
+    int Igrid = ((NX * NY) / 2) / (blockX * blockY);
     printf("Fgrid: %f\n", Fgrid);
     printf("Igrid: %d\n", Igrid);
     if (Fgrid > Igrid)
@@ -58,9 +58,17 @@ __global__ void sumMatrixOnGPU2D(float *A, float *B, float *C, int NX, int NY)
     unsigned int idx = iy * gridDim.x * blockDim.x + ix;
     printf("Idx: %d\n", idx);
 
-    if (idx < (NX * NY))
+    //make thread do 2x work
+    unsigned int adjIdx = idx * 2; //adjusted index because doing 2x work
+    unsigned int adjIdx2 = adjIdx + 1; 
+
+    if (adjIdx < (NX * NY))
     {
-        C[idx] = A[idx] + B[idx];
+        C[adjIdx] = A[adjIdx] + B[adjIdx];
+    }
+    if (adjIdx2 < (NX * NY))
+    {
+        C[adjIdx2] = A[adjIdx2] + B[adjIdx2]; //the second amount of work
     }
 }
 
