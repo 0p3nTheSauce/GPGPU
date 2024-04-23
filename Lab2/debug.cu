@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <helper_cuda.h>
 
-dim3 calculateGridSize(int NX, int NY, int blockX, int blockY)
+dim3 calculateGridSize(int NX, int NY, int blockX, int blockY, int incFac)
 {
     //dim3 grid( (nx * ny) / (blockX * blockY));
     float nx = NX;
@@ -12,8 +12,8 @@ dim3 calculateGridSize(int NX, int NY, int blockX, int blockY)
     float blockx = blockX;
     float blocky = blockY;
     //decrease the number of blocks to decrease the number of threads 
-    float Fgrid = ((nx * ny) / 2) / (blocky * blocky);
-    int Igrid = ((NX * NY) / 2) / (blockX * blockY);
+    float Fgrid = ((nx * ny) / incFac) / (blocky * blocky);
+    int Igrid = ((NX * NY) / incFac) / (blockX * blockY);
     printf("Fgrid: %f\n", Fgrid);
     printf("Igrid: %d\n", Igrid);
     if (Fgrid > Igrid)
@@ -46,7 +46,7 @@ void sumMatrixOnHost(float *A, float *B, float *C, const int nx, const int ny)
     return;
 }
 
-__global__ void sumMatrixOnGPU2D(float *A, float *B, float *C, int NX, int NY)
+__global__ void sumMatrixOnGPU2D(float *A, float *B, float *C, int NX, int NY, int incFac)
 {
     printf("blockIdx.x: %d\n", blockIdx.x);
     printf("bloackDim.x: %d\n", blockDim.x);
@@ -58,17 +58,16 @@ __global__ void sumMatrixOnGPU2D(float *A, float *B, float *C, int NX, int NY)
     unsigned int idx = iy * gridDim.x * blockDim.x + ix;
     printf("Idx: %d\n", idx);
 
-    //make thread do 2x work
-    unsigned int adjIdx = idx * 2; //adjusted index because doing 2x work
-    unsigned int adjIdx2 = adjIdx + 1; 
+    //make thread do incFac x work
+    unsigned int adjIdx = idx * incFac; //adjusted index because doing incFac x work
 
-    if (adjIdx < (NX * NY))
+    for (int i = 0; i < incFac; i++) //repeat incFac number of times
     {
-        C[adjIdx] = A[adjIdx] + B[adjIdx];
-    }
-    if (adjIdx2 < (NX * NY))
-    {
-        C[adjIdx2] = A[adjIdx2] + B[adjIdx2]; //the second amount of work
+        if (adjIdx < (NX * NY))
+        {
+            C[adjIdx] = A[adjIdx] + B[adjIdx];
+        }
+        adjIdx++;
     }
 }
 
@@ -100,6 +99,7 @@ int main()
     int ny = 5;
     int nxy = nx * ny;
     int nBytes = nxy * sizeof(float);
+    int incFac = 3; //increase work of each thread by factor
     //Host
     float *arrA, *arrB, *arrC, *arrCD; //c = a + b
     arrA = (float *)malloc(nBytes);
@@ -115,7 +115,7 @@ int main()
     int dimx = 2;
     int dimy = 2;
     dim3 block(dimx, dimy);
-    dim3 grid = calculateGridSize(nx, ny, block.x, block.y);
+    dim3 grid = calculateGridSize(nx, ny, block.x, block.y, incFac);
 
     initialData(arrA, nxy);
     initialData(arrB, nxy);
@@ -127,7 +127,7 @@ int main()
     sumMatrixOnHost(arrA, arrB, arrC, nx ,ny);
     // execute the kernel
     checkCudaErrors(cudaDeviceSynchronize());
-    sumMatrixOnGPU2D<<<grid, block>>>(dArrA, dArrB, dArrC, nx, ny);
+    sumMatrixOnGPU2D<<<grid, block>>>(dArrA, dArrB, dArrC, nx, ny, incFac);
     // copy kernel result back to host side
     checkCudaErrors(cudaMemcpy(arrCD, dArrC, nBytes, cudaMemcpyDeviceToHost));
 
