@@ -63,16 +63,23 @@ void checkResult(float *hostRef, float *gpuRef, const int N)
     }
 }
 
-// grid 2D block 2D
-__global__ void sumMatrixOnGPU2D(float *A, float *B, float *C, int NX, int NY)
+// grid 1D block 2D
+__global__ void sumMatrixOnGPU1D(float *A, float *B, float *C, int NX, int NY, int incFac)
 {   //adjusted for 1D grid
     unsigned int ix = blockIdx.x * blockDim.x + threadIdx.x;
     unsigned int iy = threadIdx.y;
     unsigned int idx = iy * gridDim.x * blockDim.x + ix;
 
-    if (idx < (NX * NY))
+    //make thread do incFac x work
+    unsigned int adjIdx = idx * incFac; //adjusted index because doing incFac x work
+
+    for (int i = 0; i < incFac; i++) //repeat incFac number of times
     {
-        C[idx] = A[idx] + B[idx];
+        if (adjIdx < (NX * NY))
+        {
+            C[adjIdx] = A[adjIdx] + B[adjIdx];
+        }
+        adjIdx++;
     }
 }
 
@@ -112,6 +119,8 @@ int main(int argc, char **argv)
     int nxy = nx * ny;
     int nBytes = nxy * sizeof(float);
 
+    int incFac = 16; //increase work of each thread by factor of...
+
     // malloc host memory
     float *h_A, *h_B, *hostRef, *gpuRef;
     h_A = (float *)malloc(nBytes);
@@ -145,7 +154,7 @@ int main(int argc, char **argv)
     }
 	
 	dim3 block(dimx, dimy);
-    dim3 grid = calculateGridSize(nx, ny, block.x, block.y);
+    dim3 grid = calculateGridSize(nx, ny, block.x, block.y, incFac);
 
     // transfer data from host to device
     checkCudaErrors(cudaMemcpy(d_MatA, h_A, nBytes, cudaMemcpyHostToDevice));
@@ -160,7 +169,7 @@ int main(int argc, char **argv)
 
 	// execute the kernel
     checkCudaErrors(cudaDeviceSynchronize());
-    sumMatrixOnGPU2D<<<grid, block>>>(d_MatA, d_MatB, d_MatC, nx, ny);
+    sumMatrixOnGPU1D<<<grid, block>>>(d_MatA, d_MatB, d_MatC, nx, ny, incFac);
     cudaEventRecord(stop);
 	checkCudaErrors(cudaEventSynchronize(stop));
 	cudaEventElapsedTime(&milli, start, stop);  // time random generation
