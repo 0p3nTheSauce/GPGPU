@@ -1,0 +1,4 @@
+#Ignore cuda_samples
+cuda_samples/
+#Ignore nvvp files
+*.nvvp
