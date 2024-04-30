@@ -18,9 +18,8 @@ int main(int argc, char **argv)
 
    if (argc != 2)
    {
-      printf("Usage: time_program <program_to_time>\n");
+      printf("Usage: MCPi <number_of_iterations>\n");
       exit(EXIT_FAILURE);
-      
    } 
    niter = atoi(argv[1]);
    if (niter <= 0) {

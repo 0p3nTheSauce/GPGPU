@@ -4,7 +4,7 @@
 #include <curand_kernel.h>
 
 /*  A Device API example program using the CURAND library
-    which generates 100000 pseudorandom floats,
+    which generates pseudorandom floats,
     and checks what fraction have the lower bit set (are odd)
     taken from the slide which are taken form the cuda toolkit documentation. 
 
@@ -40,7 +40,7 @@ __global__ void generate_kernel(curandState *state, int *result)
         if (x & 1) count++;
     }
 
-    /* Copy state back to global memoryt */
+    /* Copy state back to global memory */
     state[id] = localState;
 
     /* Store results*/
@@ -56,7 +56,7 @@ int main()
     /* Allocate space for results on host*/
     hostResults = (int *)calloc(64 * 64, sizeof(int));
 
-    /* Allocate spce for results on device*/
+    /* Allocate space for results on device*/
     CUDA_CALL(cudaMalloc((void **)&devResults, 64 * 64 * sizeof(int)));
 
     /* Set results to 0*/
