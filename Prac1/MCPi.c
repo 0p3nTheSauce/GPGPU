@@ -12,10 +12,6 @@
 
 int main(int argc, char* argv)
 {
-   clock_t start, end;
-   double exec_time;
-   start = clock(); //begin timing
-
    int niter=0;
    double x,y;
    int i,count=0; /* # of points in the 1st quadrant of unit circle */
@@ -36,8 +32,5 @@ int main(int argc, char* argv)
       }
    pi=(double)count/niter*4;
    printf("# of trials= %d , estimate of pi is %g \n",niter,pi);
-   end = clock();
-   exec_time = ((double) (end - start) * 1000) / CLOCKS_PER_SEC;
-   printf("Execution time: %f ms\n", exec_time);
    return 0;
 }
