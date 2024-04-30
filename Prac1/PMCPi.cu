@@ -13,7 +13,7 @@
 
 __global__ void setup_kernel(curandState *state)
 {
-    int id = threadIdx.x + blockIdx.x; // * 64
+    int id = threadIdx.x + blockIdx.x; // * 64 (need to return to this comment later)
     /*  Each thread gets same seed, 
         a different sequence number, no offset
     */
@@ -22,7 +22,7 @@ __global__ void setup_kernel(curandState *state)
 
 __global__ void generate_kernel(curandState *state, int *result)
 {
-    int id = threadIdx.x + blockIdx.x; // * 64
+    int id = threadIdx.x + blockIdx.x; // * 64  
     int count = 0;
     double x, y, z;
 
@@ -58,6 +58,10 @@ int main(int argc, char **argv)
 {
     int niter=0;
     double pi;
+    curandState *devStates;
+    int *devResults, *hostResults;
+    int count = 0;
+
     //Take input from command line
     if (argc != 2)
     {
@@ -70,5 +74,48 @@ int main(int argc, char **argv)
       printf("Number of iterations must be a positive integer\n");
       exit(EXIT_FAILURE);
     }
+
+    /*  Allocate space for results on host
+        8 calculations per thread * 2048 threads per SM * 6 SMs
+        = 98304 iterations
+        98304 iterations / 8 results per thread = 12288 results
+        (probably a good area for optimization later)
+    */
+    hostResults = (int *)calloc(12288, sizeof(int));
+
+    //Allocate space for results on device 
+    checkCudaErrors(cudaMalloc((void **)&devResults,
+                    12288 * sizeof(int)));
+
+    //Set results to 0
+    checkCudaErrors(cudaMemset(devResults, 0,
+                    12288 * sizeof(int)));
+
+    //Allocate space for prng states on device
+    checkCudaErrors(cudaMalloc((void **)&devStates,
+                    12288 * sizeof(curandState)));
+    
+    /*  Setup prng states
+        2048 threads per SM = 32 blocks, 64 threads each 
+        32 blocks * 6 SMs = 192 blocks total 
+    */
+    setup_kernel<<<192, 64>>>(devStates);
+    
+    //Generate pseudo-random
+    generate_kernel<<<192, 64>>>(devStates, devResults);
+
+    //Copy device memory to host
+    checkCudaErrors(cudaMemcpy(hostResults, devResults,
+                    12288 * sizeof(int), cudaMemcpyDeviceToHost));
+
+    //Calculate total count
+    for (int i = 0; i < 12288; i++) {
+        count += hostResults[i];
+    }
+    //calculate pi
+    pi = (double)count/98304*4; //I will have to change this at some point
+    //pi=(double)count/niter*4;
+    printf("# of trials= %d , estimate of pi is %g \n",98304,pi);
+    return 0;
 
 }
