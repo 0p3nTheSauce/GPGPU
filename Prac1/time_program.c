@@ -12,8 +12,6 @@ int main(int argc, char **argv) {
     char *program;
     char *niter;
     char execute[100] = "./";
-    int dynamically_allocated = 0; // Flag to indicate whether path was dynamically allocated
-    //get name of program to execute in form ./program
     if (argc == 3)
     {
         program = argv[1];
