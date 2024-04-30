@@ -2,15 +2,13 @@
 /* Compile with gcc mcpi.c -o mcp */
 /* Run with mcp */
 
-#include <time.h>
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
 #include <string.h>
 #define SEED 35791246
 
-int main(int argc, char* argv)
+int main(int argc, char **argv)
 {
    int niter=0;
    double x,y;
@@ -18,9 +16,17 @@ int main(int argc, char* argv)
    double z;
    double pi;
 
-   printf("Enter the number of iterations used to estimate pi: ");
-   scanf("%d",&niter);
-
+   if (argc != 2)
+   {
+      printf("Usage: time_program <program_to_time>\n");
+      exit(EXIT_FAILURE);
+      
+   } 
+   niter = atoi(argv[1]);
+   if (niter <= 0) {
+      printf("Number of iterations must be a positive integer\n");
+      exit(EXIT_FAILURE);
+   }
    /* initialize random numbers */
    srand(SEED);
    count=0;
