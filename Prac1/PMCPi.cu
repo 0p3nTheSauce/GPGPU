@@ -13,7 +13,7 @@
 
 __global__ void setup_kernel(curandState *state)
 {
-    int id = threadIdx.x + blockIdx.x; // * 64 (need to return to this comment later)
+    int id = threadIdx.x + blockIdx.x * blockDim.x;
     /*  Each thread gets same seed, 
         a different sequence number, no offset
     */
@@ -22,7 +22,7 @@ __global__ void setup_kernel(curandState *state)
 
 __global__ void generate_kernel(curandState *state, int *result)
 {
-    int id = threadIdx.x + blockIdx.x; // * 64  
+    int id = threadIdx.x + blockIdx.x * blockDim.x; 
     int count = 0;
     double x, y, z;
 
