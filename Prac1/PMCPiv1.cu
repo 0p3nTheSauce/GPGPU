@@ -1,6 +1,10 @@
 /*  Program to compute Pi using Monte Carlo methods, on the GPU
     Compile with nvcc PMCPi.cu -lcurand -o PMCPi
     Run with MCPi
+
+    This was the first attempt, echives speeds of about the same as 
+    MPCPi, though slightly slower (between 1 and 2 hundredths of ms), and has 
+    a ball park estimate of pi 3.1377
 */
 
 #include <stdio.h>
@@ -116,15 +120,12 @@ int main(int argc, char **argv)
     pi = (double)count/98304*4; //I will have to change this at some point
     //pi=(double)count/niter*4;
     printf("# of trials= %d , estimate of pi is %g \n",98304,pi);
-    
+
     //clean up
     free(hostResults);
     checkCudaErrors(cudaFree(devResults));
     checkCudaErrors(cudaFree(devStates));
     checkCudaErrors(cudaDeviceReset());
-    
     return 0;
-
-
 
 }
