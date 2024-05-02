@@ -1,6 +1,6 @@
 /*  Program to compute Pi using Monte Carlo methods, on the GPU
     Compile with nvcc PMCPi.cu -lcurand -o PMCPi
-    Run with MCPi
+    Run with PMCPi
 */
 
 #include <stdio.h>
@@ -20,7 +20,7 @@ __global__ void setup_kernel(curandState *state)
    curand_init(1234, id, 0, &state[id]);
 }
 
-__global__ void generate_kernel(curandState *state, int *result)
+__global__ void generate_kernel(curandState *state, int *result, int calcpt)
 {
     int id = threadIdx.x + blockIdx.x * blockDim.x; 
     int count = 0;
@@ -30,19 +30,13 @@ __global__ void generate_kernel(curandState *state, int *result)
     curandState localState = state[id];
 
     //generate pseudo-random unsigned int
-    for (int n = 0; n < 8; n++) {
-        /*  we want our x and y to fall in the range -1 to 1.
-            curand_uniform returns values in a uniform distribution,
-            in the range 0 to 1, (annoyingly) excluding 0 but including 1.
-            I'm going to pretend that it returns values in the range
-            0 to 1 inclusive, so that i can modify the range to -1 to 1
+    for (int n = 0; n < calcpt; n++) {
+        /*  curand uniform returns pseudo random numbers in the range 0 to 1
+            the algorithm still works because we are just calculating for a 
+            qurter of a circle
         */
         x = curand_uniform(&localState);
-        x = x * 2;
-        x = x - 1;
         y = curand_uniform(&localState);
-        y = y * 2;
-        y = y - 1;
         z = x*x + y*y;
         if (z<=1) count++;
     }
@@ -56,12 +50,12 @@ __global__ void generate_kernel(curandState *state, int *result)
 
 int main(int argc, char **argv)
 {
-    int niter=0;
     double pi;
     curandState *devStates;
     int *devResults, *hostResults;
     int count = 0;
-
+    int nt = 2048 * 6; //total number of threads (6 SMs * 2048 threads)
+    int niter, calcpt, riter;
     //Take input from command line
     if (argc != 2)
     {
@@ -74,48 +68,46 @@ int main(int argc, char **argv)
       printf("Number of iterations must be a positive integer\n");
       exit(EXIT_FAILURE);
     }
+    calcpt = niter / nt; //calculations per thread
+    riter = nt * calcpt; //rounded iterations
 
-    /*  Allocate space for results on host
-        8 calculations per thread * 2048 threads per SM * 6 SMs
-        = 98304 iterations
-        98304 iterations / 8 results per thread = 12288 results
-        (probably a good area for optimization later)
-    */
-    hostResults = (int *)calloc(12288, sizeof(int));
+    //Allocate space for results on host
+    hostResults = (int *)calloc(nt, sizeof(int));
 
     //Allocate space for results on device 
     checkCudaErrors(cudaMalloc((void **)&devResults,
-                    12288 * sizeof(int)));
+                    nt * sizeof(int)));
 
     //Set results to 0
     checkCudaErrors(cudaMemset(devResults, 0,
-                    12288 * sizeof(int)));
+                    nt * sizeof(int)));
 
     //Allocate space for prng states on device
     checkCudaErrors(cudaMalloc((void **)&devStates,
-                    12288 * sizeof(curandState)));
+                    nt * sizeof(curandState)));
     
     /*  Setup prng states
         2048 threads per SM = 32 blocks, 64 threads each 
         32 blocks * 6 SMs = 192 blocks total 
+        (good place to return for optimisation)
     */
     setup_kernel<<<192, 64>>>(devStates);
     
     //Generate pseudo-random
-    generate_kernel<<<192, 64>>>(devStates, devResults);
+    generate_kernel<<<192, 64>>>(devStates, devResults, calcpt);
 
     //Copy device memory to host
     checkCudaErrors(cudaMemcpy(hostResults, devResults,
-                    12288 * sizeof(int), cudaMemcpyDeviceToHost));
+                    nt * sizeof(int), cudaMemcpyDeviceToHost));
 
     //Calculate total count
-    for (int i = 0; i < 12288; i++) {
+    for (int i = 0; i < nt; i++) {
         count += hostResults[i];
     }
     //calculate pi
-    pi = (double)count/98304*4; //I will have to change this at some point
+    pi = (double)count/riter*4; //I will have to change this at some point
     //pi=(double)count/niter*4;
-    printf("# of trials= %d , estimate of pi is %g \n",98304,pi);
+    printf("# of trials= %d , estimate of pi is %g \n",riter,pi);
     
     //clean up
     free(hostResults);
@@ -124,7 +116,5 @@ int main(int argc, char **argv)
     checkCudaErrors(cudaDeviceReset());
     
     return 0;
-
-
 
 }

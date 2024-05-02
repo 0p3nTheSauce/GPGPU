@@ -16,7 +16,6 @@ int main(int argc, char **argv) {
     {
         printf("Usage: time_program <number_of_iterations> <program_to_time> {<additional_arguments} \n");
         exit(EXIT_FAILURE);
-        
     }
     niter = atoi(argv[1]);
     program = argv[2];
