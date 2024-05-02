@@ -25,14 +25,14 @@ int main(int argc, char **argv) {
     strcat(execute, " ");
     strcat(execute, niter);
     // calculate average execution time
-    for (int i = 0; i < 100; i++) 
+    for (int i = 0; i < 10; i++) 
     {
         start = clock();
         system(execute);
         end = clock();
         total_exec_time += ((double)(end - start) * 1000) / CLOCKS_PER_SEC;
     }
-    exec_time = total_exec_time / 100;
+    exec_time = total_exec_time / 10;
     printf("Average execution time: %f ms\n", exec_time);
     
     return 0;
