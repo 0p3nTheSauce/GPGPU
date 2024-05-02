@@ -27,13 +27,13 @@ int main(int argc, char **argv) {
     // calculate average execution time
     for (int i = 0; i < 10; i++) 
     {
-        start = clock();
+        start = time(NULL);
         system(execute);
-        end = clock();
-        total_exec_time += ((double)(end - start) * 1000) / CLOCKS_PER_SEC;
+        end = time(NULL);
+        total_exec_time += difftime(end, start);
     }
     exec_time = total_exec_time / 10;
-    printf("Average execution time: %f ms\n", exec_time);
+    printf("Average execution time: %f seconds\n", exec_time);
     
     return 0;
 }

@@ -5,10 +5,14 @@
 
 int main(int argc, char** argv)
 {
+    // time_t start, end;
     int sleep_seconds = atoi(argv[1]);
     printf("Calling the sleep function for %d seconds\n", sleep_seconds);
-    printf("Timestamp: %d\n", (int)time(NULL));
+    // start = time(NULL);
     sleep(sleep_seconds);
-    printf("Timestamp: %d\n", (int)time(NULL));
+    // end = time(NULL);
+    // printf("Time taken to print sum is %.2f seconds\n",
+    //        difftime(end, start));
+
     return 0;
 }
