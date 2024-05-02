@@ -5,6 +5,12 @@
 
 #define MAX_STRING 100
 
+/*  This porgram calculates the average execution time of other programs.
+    Example: ./time_program 10 MCPi 100000000 
+    finds the average execution time of MCPi over 10 runs, with 100000000 as 
+    the argument for MCPi
+*/
+
 int main(int argc, char **argv) {
     clock_t start, end;
     double exec_time = 0;
@@ -34,7 +40,7 @@ int main(int argc, char **argv) {
         total_exec_time += difftime(end, start);
     }
     exec_time = total_exec_time / niter;
-    printf("Average execution time: %f seconds\n", exec_time);
+    printf("Average execution time: %g seconds\n", exec_time);
     
     return 0;
 }

@@ -35,14 +35,11 @@ __global__ void generate_kernel(curandState *state, int *result, int calcpt)
             the algorithm still works because we are just calculating for a 
             qurter of a circle
         */
-        x = curand_uniform(&localState);
-        y = curand_uniform(&localState);
+        x = curand_uniform_double(&localState);
+        y = curand_uniform_double(&localState);
         z = x*x + y*y;
         if (z<=1) count++;
     }
-
-    //Copy state back to global memory
-    state[id] = localState;
 
     //Store results
     result[id] += count;
@@ -78,10 +75,6 @@ int main(int argc, char **argv)
     checkCudaErrors(cudaMalloc((void **)&devResults,
                     nt * sizeof(int)));
 
-    //Set results to 0
-    checkCudaErrors(cudaMemset(devResults, 0,
-                    nt * sizeof(int)));
-
     //Allocate space for prng states on device
     checkCudaErrors(cudaMalloc((void **)&devStates,
                     nt * sizeof(curandState)));
@@ -106,7 +99,6 @@ int main(int argc, char **argv)
     }
     //calculate pi
     pi = (double)count/riter*4; //I will have to change this at some point
-    //pi=(double)count/niter*4;
     printf("# of trials= %d , estimate of pi is %g \n",riter,pi);
     
     //clean up
