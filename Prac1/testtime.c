@@ -7,6 +7,7 @@ int main(int argc, char** argv)
 {
     // time_t start, end;
     int sleep_seconds = atoi(argv[1]);
+    //int sleep_seconds = 5;
     printf("Calling the sleep function for %d seconds\n", sleep_seconds);
     // start = time(NULL);
     sleep(sleep_seconds);

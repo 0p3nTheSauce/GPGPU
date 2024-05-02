@@ -10,29 +10,31 @@ int main(int argc, char **argv) {
     double exec_time = 0;
     double total_exec_time = 0;
     char *program;
-    char *niter;
+    int niter;
     char execute[100] = "./";
-    if (argc == 3)
+    if (argc < 3)
     {
-        program = argv[1];
-        niter = argv[2];
-    } else 
-    {
-        printf("Usage: time_program <program_to_time> <number_of_iterations>\n");
+        printf("Usage: time_program <number_of_iterations> <program_to_time> {<additional_arguments} \n");
         exit(EXIT_FAILURE);
+        
     }
+    niter = atoi(argv[1]);
+    program = argv[2];
     strcat(execute, program);
-    strcat(execute, " ");
-    strcat(execute, niter);
+    for (int i = 3; i < argc; i++){
+        strcat(execute, " ");
+        strcat(execute, argv[i]);
+    }
+    
     // calculate average execution time
-    for (int i = 0; i < 10; i++) 
+    for (int i = 0; i < niter; i++) 
     {
-        start = time(NULL);
+        start = time(NULL); 
         system(execute);
         end = time(NULL);
         total_exec_time += difftime(end, start);
     }
-    exec_time = total_exec_time / 10;
+    exec_time = total_exec_time / niter;
     printf("Average execution time: %f seconds\n", exec_time);
     
     return 0;
