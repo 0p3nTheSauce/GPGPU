@@ -9,7 +9,6 @@
 #include <curand.h>
 #include <helper_cuda.h>
 #include <curand_kernel.h>
-#define SEED 35791246
 
 __global__ void setup_kernel(curandState *state)
 {
