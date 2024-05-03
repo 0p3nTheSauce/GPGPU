@@ -98,7 +98,7 @@ int main(int argc, char **argv)
         count += hostResults[i];
     }
     //calculate pi
-    pi = (double)count/riter*4; //I will have to change this at some point
+    pi = (double)count/riter*4; 
     printf("# of trials= %d , estimate of pi is %g \n",riter,pi);
     
     //clean up
