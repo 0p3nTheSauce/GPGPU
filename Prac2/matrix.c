@@ -1,36 +1,27 @@
 #include <stdio.h>
 
-#define ROWS 3
-#define COLS 3
-
-
 // Function prototype
-void printMatrix(int matrix[][COLS]);
+void printMatrix(int *matrix, int rows, int cols);
 
 int main() {
-    // Declare a 2D array (matrix) with ROWS rows and COLS columns
-    int matrix[ROWS][COLS];
+    int matrix[3][3] = {
+        {1, 2, 3},
+        {4, 5, 6},
+        {7, 8, 9}
+    };
 
-    // Initialize the matrix (optional)
-    // For example, let's initialize it with consecutive numbers
-    int count = 1;
-    for (int i = 0; i < ROWS; i++) {
-        for (int j = 0; j < COLS; j++) {
-            matrix[i][j] = count++;
-        }
-    }
-    printMatrix(matrix);
-    
+    // Call the function to print the matrix
+    printMatrix(*matrix, 3, 3);
 
     return 0;
 }
 
 // Function definition to print the matrix
-void printMatrix(int matrix[][COLS]) {
+void printMatrix(int *matrix, int rows, int cols) {
     printf("Matrix:\n");
-    for (int i = 0; i < ROWS; i++) {
-        for (int j = 0; j < COLS; j++) {
-            printf("%d ", matrix[i][j]);
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            printf("%d ", *(matrix + i * cols + j));
         }
         printf("\n");
     }

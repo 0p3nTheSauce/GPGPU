@@ -24,6 +24,8 @@
 #include <stdio.h>
 #include <math.h>
 #include <sys/time.h>
+#include <helper_cuda.h>
+#include <curand_kernel.h>
 
 // size of plate
 #define COLUMNS    10
@@ -43,7 +45,14 @@ double Temperature_last[ROWS+2][COLUMNS+2]; // temperature grid from last iterat
 void initialize();
 void track_progress(int iter);
 // Function prototype
-void printMatrix(double *matrix, int rows, int cols);
+void printMatrix(double matrix[][COLUMNS+2]);
+
+__global__ void placela(double *matrix, int rows, int cols)
+{
+    int ix = threadIdx.x + blockIdx.x * blockDim.x;
+    int iy = threadIdx.y + blockIdx.y * blockDim.y;
+     
+}
 
 int main(int argc, char *argv[]) {
 
@@ -58,8 +67,7 @@ int main(int argc, char *argv[]) {
     gettimeofday(&start_time,NULL); // Unix timer
 
     initialize();                   // initialize Temp_last including boundary conditions
-    printMatrix(*Temperature, ROWS+2,COLUMNS+2 );
-    printMatrix(*Temperature_last, ROWS+2,COLUMNS+2 );
+    printMatrix(Temperature);
     // do until error is minimal or until max steps
     while ( dt > MAX_TEMP_ERROR && iteration <= max_iterations ) {
 
@@ -88,8 +96,7 @@ int main(int argc, char *argv[]) {
 
 	iteration++;
     }
-    printMatrix(*Temperature, ROWS+2,COLUMNS+2 );
-    printMatrix(*Temperature_last, ROWS+2,COLUMNS+2 );
+    printMatrix(Temperature);
     gettimeofday(&stop_time,NULL);
 	timersub(&stop_time, &start_time, &elapsed_time); // Unix time subtract routine
 
@@ -100,11 +107,11 @@ int main(int argc, char *argv[]) {
 }
 
 // Function definition to print the matrix
-void printMatrix(double *matrix, int rows, int cols) {
+void printMatrix(double matrix[][COLUMNS+2]) {
     printf("Matrix:\n");
-    for (int i = 0; i < rows; i++) {
-        for (int j = 0; j < cols; j++) {
-            printf("%f ", *(matrix + i * cols + j));
+    for (int i = 0; i < ROWS; i++) {
+        for (int j = 0; j < COLUMNS; j++) {
+            printf("%f ", matrix[i][j]);
         }
         printf("\n");
     }
