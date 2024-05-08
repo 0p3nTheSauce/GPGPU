@@ -42,7 +42,8 @@ double Temperature_last[ROWS+2][COLUMNS+2]; // temperature grid from last iterat
 //   helper routines
 void initialize();
 void track_progress(int iter);
-
+// Function prototype
+void printMatrix(double matrix[][COLUMNS+2]);
 
 int main(int argc, char *argv[]) {
 
@@ -57,7 +58,7 @@ int main(int argc, char *argv[]) {
     gettimeofday(&start_time,NULL); // Unix timer
 
     initialize();                   // initialize Temp_last including boundary conditions
-
+    printMatrix(Temperature);
     // do until error is minimal or until max steps
     while ( dt > MAX_TEMP_ERROR && iteration <= max_iterations ) {
 
@@ -94,6 +95,17 @@ int main(int argc, char *argv[]) {
     printf("Total time was %f seconds.\n", elapsed_time.tv_sec+elapsed_time.tv_usec/1000000.0);
 
     exit(0);
+}
+
+// Function definition to print the matrix
+void printMatrix(double matrix[][COLUMNS+2]) {
+    printf("Matrix:\n");
+    for (int i = 0; i < ROWS; i++) {
+        for (int j = 0; j < COLUMNS; j++) {
+            printf("%f ", matrix[i][j]);
+        }
+        printf("\n");
+    }
 }
 
 
