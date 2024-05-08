@@ -45,13 +45,20 @@ double Temperature_last[ROWS+2][COLUMNS+2]; // temperature grid from last iterat
 void initialize();
 void track_progress(int iter);
 // Function prototype
-void printMatrix(double matrix[][COLUMNS+2]);
+void printMatrix(int *matrix, int rows, int cols);
 
-__global__ void placela(double *matrix, int rows, int cols)
+__global__ void placela(double *Temp, double *Temp_last,int cols, int rows)
 {
     int ix = threadIdx.x + blockIdx.x * blockDim.x;
     int iy = threadIdx.y + blockIdx.y * blockDim.y;
-     
+    int idx = iy * cols + ix;
+
+    if (ix > 0 && ix < cols-2 && iy > 0 && rows-2) 
+    {
+        Temp[idx] = 0.25 * (Temp_last[idx+1] + Temp_last[idx-1] +
+                                    Temp_last[idx+cols] + Temp_last[idx-cols]);
+    }
+
 }
 
 int main(int argc, char *argv[]) {
