@@ -1,14 +1,21 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 int main() {
     //1D arrays and single pointers
     int a[3] = {1, 2, 3};
     int *p = a;
+    int b[3];
+    memcpy(b, p, sizeof(a));
     printf("a[0] = %d, *p = %d\n", a[0], *p);
     printf("*a = %d, p[0] = %d\n", *a, p[0]);
+    printf("b[0] = %d, *b = %d\n", a[0], *p);
     //2D arrays and double pointers
     //mat
+    int rows = 3;
+    int cols = 3;
+    //int mat[rows][cols]  = {    not allowed
     int mat[3][3]  = {
         {1,2,3},
         {4,5,6},
@@ -22,8 +29,8 @@ int main() {
     }
     printf("\n");
     //mat2
-    int rows = 3;
-    int cols = 3;
+    // int rows = 3;
+    // int cols = 3;
     int pos = 0;
     int **mat2 = calloc(rows, sizeof(int*));
     for (int row=0; row < rows; row++) {
