@@ -27,10 +27,6 @@
 #include <helper_cuda.h>
 #include <curand_kernel.h>
 
-// size of plate
-#define COLUMNS    10
-#define ROWS       10
-
 #ifndef MAX_ITER
 #define MAX_ITER 100
 #endif
@@ -38,28 +34,12 @@
 // largest permitted change in temp (This value takes about 3400 steps)
 #define MAX_TEMP_ERROR 0.01
 
-double Temperature[ROWS+2][COLUMNS+2];      // temperature grid
-double Temperature_last[ROWS+2][COLUMNS+2]; // temperature grid from last iteration
-
 //   helper routines
-void initialize();
-void track_progress(int iter);
+void initialize(int rows, int cols, double **Temp, double **Temp_last);
+void track_progress(int iter, double **Temperature);
 // Function prototype
-void printMatrix(int *matrix, int rows, int cols);
+void printMatrix( int rows, int cols, double **matrix);
 
-__global__ void placela(double *Temp, double *Temp_last,int cols, int rows)
-{
-    int ix = threadIdx.x + blockIdx.x * blockDim.x;
-    int iy = threadIdx.y + blockIdx.y * blockDim.y;
-    int idx = iy * cols + ix;
-
-    if (ix > 0 && ix < cols-2 && iy > 0 && rows-2) 
-    {
-        Temp[idx] = 0.25 * (Temp_last[idx+1] + Temp_last[idx-1] +
-                                    Temp_last[idx+cols] + Temp_last[idx-cols]);
-    }
-
-}
 
 int main(int argc, char *argv[]) {
 
@@ -69,12 +49,25 @@ int main(int argc, char *argv[]) {
     double dt=100;                                       // largest change in t
     struct timeval start_time, stop_time, elapsed_time;  // timers
 
+    const int rows = 10;
+    const int cols = 10;
+    double hTemperature[rows+2][cols+2];      // temperature grid
+    double hTemperature_last[rows+2][cols+2]; // temperature grid from last iteration
+    double *hTemp = hTemperature;
+    double *hTemp_last = hTemperature_last;
+    
+
+    dim3 block(32, 32, 1);
+    dim3 grid(1, 1, 1);
+    
+
+
     max_iterations = MAX_ITER;
 
     gettimeofday(&start_time,NULL); // Unix timer
 
-    initialize();                   // initialize Temp_last including boundary conditions
-    printMatrix(Temperature);
+    initialize(rows, cols, hTemperature, hTemperature_last);                   // initialize Temp_last including boundary conditions
+    printMatrix(*hTemperature, rows+2,cols+2 );
     // do until error is minimal or until max steps
     while ( dt > MAX_TEMP_ERROR && iteration <= max_iterations ) {
 
@@ -103,7 +96,7 @@ int main(int argc, char *argv[]) {
 
 	iteration++;
     }
-    printMatrix(Temperature);
+    printMatrix(*Temperature, ROWS+2,COLUMNS+2 );
     gettimeofday(&stop_time,NULL);
 	timersub(&stop_time, &start_time, &elapsed_time); // Unix time subtract routine
 
@@ -113,21 +106,60 @@ int main(int argc, char *argv[]) {
     exit(0);
 }
 
+__global__ void avneighbours(double *Temp, double *Temp_last,int cols, int rows)
+{
+    int ix = threadIdx.x + blockIdx.x * blockDim.x;
+    int iy = threadIdx.y + blockIdx.y * blockDim.y;
+    int idx = iy * cols + ix;
+
+    if (ix > 0 && ix < cols-2 && iy > 0 && rows-2) 
+    {
+        Temp[idx] = 0.25 * (Temp_last[idx+1] + Temp_last[idx-1] +
+                                    Temp_last[idx+cols] + Temp_last[idx-cols]);
+    }
+
+}
+
+__global__ void tempchange(double *Temp, double *Temp_last, int cols, int rows,
+                            double *dts)
+{
+    int ix = threadIdx.x + blockIdx.x * blockDim.x;
+    int iy = threadIdx.y + blockIdx.y * blockDim.y;
+    int idx = iy * cols + ix;
+    double dt = 0;
+    if (ix > 0 && ix < cols-2 && iy > 0 && rows-2) 
+    {
+        dt = fmax(fabs(Temp[idx] - Temp_last[idx]), dt);
+        Temp[idx] = Temp_last[idx];
+    }
+    dts[idx] = dt;
+}
+
+// __global__ void init(double *Temp, double *Temp_last,int cols, int rows)
+// {
+//     int ix = threadIdx.x + blockIdx.x * blockDim.x;
+//     int iy = threadIdx.y + blockIdx.y * blockDim.y;
+//     int idx = iy * cols + ix;
+//     if (ix < cols && iy < rows) Temp_last[idx] = 0.0;
+//     if ()
+// }
+
 // Function definition to print the matrix
-void printMatrix(double matrix[][COLUMNS+2]) {
+void printMatrix(double *matrix, int rows, int cols) {
     printf("Matrix:\n");
-    for (int i = 0; i < ROWS; i++) {
-        for (int j = 0; j < COLUMNS; j++) {
-            printf("%f ", matrix[i][j]);
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            printf("%f ", *(matrix + i * cols + j));
         }
         printf("\n");
     }
 }
 
 
+
 // initialize plate and boundary conditions
 // Temp_last is used to to start first iteration
-void initialize(){
+void initialize(int rows, int cols, double **Temperature, double **Temperature_last){
 
     int i,j;
 
@@ -154,7 +186,7 @@ void initialize(){
 
 
 // print diagonal in bottom right corner where most action is
-void track_progress(int iteration) {
+void track_progress(int iteration, double **Temperature) {
 
     int i;
 
