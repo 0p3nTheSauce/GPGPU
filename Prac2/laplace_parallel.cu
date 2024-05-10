@@ -46,6 +46,7 @@ void initialize();
 void track_progress(int iter);
 // Added by me
 void printMatrix(double *matrix, int rows, int cols);
+void setTo(double *matrix, int rows, int cols);
 //Kernel prototypes
 __global__ void avn_tmpchng(double *Temp, double *Temp_last, int rows, int cols, double *dts);
 
@@ -78,6 +79,7 @@ int main(int argc, char *argv[]) {
     initialize();                   // initialize Temp_last including boundary conditions
     printf("Temperature after initialization: ");
     printMatrix(*Temperature, rows,cols);
+    setTo(*Temperature_last, rows, cols);
     printf("Temperature_last after initialization: ");
     printMatrix(*Temperature_last, rows, cols);
     //Transfer data from host to device
@@ -156,7 +158,7 @@ __global__ void avn_tmpchng(double *Temp, double *Temp_last, int rows, int cols,
     int iy = threadIdx.y + blockIdx.y * blockDim.y;
     int idx = iy * cols + ix;
     double dt = 0;
-    if (ix > 0 && ix < cols-2 && iy > 0 && iy < rows-2) 
+    if (ix > 0 && ix < cols-1 && iy > 0 && iy < rows-1) 
     {
         Temp[idx] = 0.25 * (Temp_last[idx+1] + Temp_last[idx-1] +
                                     Temp_last[idx+cols] + Temp_last[idx-cols]);
@@ -179,18 +181,20 @@ void printMatrix(double *matrix, int rows, int cols) {
     }
 }
 
+void setTo(double *matrix, int rows, int cols) {
+    int i, j;
+    for (i = 0; i < rows; i++){
+        for(j=0; j < cols; j++){
+            Temperature_last[i][j] = 1.0;
+        }
+    }
+}
 
 // initialize plate and boundary conditions
 // Temp_last is used to to start first iteration
 void initialize(){
 
     int i,j;
-
-    // for(i = 0; i < ROWS+2; i++){
-    //     for (j = 0; j < COLUMNS+2; j++){
-    //         Temperature[i][j] = 0.0;
-    //     }
-    // }
 
     for(i = 0; i <= ROWS+1; i++){
         for (j = 0; j <= COLUMNS+1; j++){
