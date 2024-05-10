@@ -16,14 +16,27 @@ void printMatrix(int rows, int cols, int **matrix) {
 
 // Single pointer
 void printMatrixSP(int rows, int cols, int *matrix) {
-    printf("Matrix:\n");
+    //printf("Matrix:\n");
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
             printf("%d ", *(matrix + i * cols + j));
+            //printf("%d ", matrix[i][j]);
         }
         printf("\n");
     }
 }
+//Single pointer subset
+void printMatrixSPSub(int rows, int cols, int *matrix, int toRow, int toCol) {
+    //printf("Matrix:\n");
+    for (int i = 0; i < toRow; i++) {
+        for (int j = 0; j < toCol; j++) {
+            printf("%d ", *(matrix + i * cols + j));
+            //printf("%d ", matrix[i][j]);
+        }
+        printf("\n");
+    }
+}
+
 
 int **initHeap(int rows, int cols) {
     int **matrix = calloc(rows, sizeof(int*));
@@ -44,6 +57,7 @@ int main(int argc, char **argv) {
     //Heap allocated
     int **matrix1 = initHeap(rows, cols);
     printf("sizeof(matrix1) = %lu\n", sizeof(matrix1));
+    printf("Matrix1: \n");
     printMatrix(rows, cols, matrix1);
 
     //stack allocated
@@ -52,8 +66,8 @@ int main(int argc, char **argv) {
         {4,5,6,7},
         {8,9,10,11},
     };
-
-    printMatrixSP(3, 4, *matrix2);
+    printf("Matrix2: \n");
+    printMatrixSPSub(3, 4, *matrix2, 2, 3);
 
 
     //clean up heap
