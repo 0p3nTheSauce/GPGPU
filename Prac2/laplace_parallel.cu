@@ -44,52 +44,80 @@ double Temperature_last[ROWS+2][COLUMNS+2]; // temperature grid from last iterat
 //   helper routines
 void initialize();
 void track_progress(int iter);
-// Function prototype
+// Added by me
 void printMatrix(double *matrix, int rows, int cols);
-
+//Kernel prototypes
+__global__ void avneighbours(double *Temp, double *Temp_last, int rows, int cols);
+__global__ void tempchange(double *Temp, double *Temp_last, int rows, int cols,
+                            double *dts);
 
 int main(int argc, char *argv[]) {
 
-    int i, j;                                            // grid indexes
+    // int i, j;                                            // grid indexes
     int max_iterations;                                  // number of iterations
     int iteration=1;                                     // current iteration
     double dt=100;                                       // largest change in t
     struct timeval start_time, stop_time, elapsed_time;  // timers
 
-    const int rows = 10;
-    const int cols = 10;
-    
     max_iterations = MAX_ITER;
 
     gettimeofday(&start_time,NULL); // Unix timer
 
+    //malloc device
+    double *d_Temp, *d_Temp_last, *d_dts;
+    int rows = ROWS+2, cols = COLUMNS+2;
+    int nelems = rows*cols;
+    int nBytes = nelems*sizeof(double);
+    checkCudaErrors(cudaMalloc((void **)&d_Temp, nBytes));
+    checkCudaErrors(cudaMalloc((void **)&d_Temp_last, nBytes));
+    //dts could be ROWS * COLS but for simpliity 1-to-1 correspondence with Temp and Temp_last
+    checkCudaErrors(cudaMalloc((void **)&d_dts, nBytes)); 
+    //malloc host dts
+    double *h_dts;
+    h_dts = (double *)malloc(nBytes);
+
+
     initialize();                   // initialize Temp_last including boundary conditions
     printMatrix(*Temperature, rows+2,cols+2 );
+
+    //Transfer data from host to device
+    checkCudaErrors(cudaMemcpy(d_Temp, Temperature, nBytes, cudaMemcpyHostToDevice));
+    checkCudaErrors(cudaMemcpy(d_Temp_last, Temperature_last, nBytes, cudaMemcpyHostToDevice));
+    
+    //setup kernel
+    dim3 block(32); //for testing, to change later
+    dim3 grid(1);
+
     // do until error is minimal or until max steps
     while ( dt > MAX_TEMP_ERROR && iteration <= max_iterations ) {
 
+
+        checkCudaErrors(cudaDeviceSynchronize());
         // main calculation: average my four neighbors    
-        for(i = 1; i <= ROWS; i++) {
-            for(j = 1; j <= COLUMNS; j++) {
-                Temperature[i][j] = 0.25 * (Temperature_last[i+1][j] + Temperature_last[i-1][j] +
-                                            Temperature_last[i][j+1] + Temperature_last[i][j-1]);
-            }
-        }
+        avneighbours<<<grid, block>>>(d_Temp, d_Temp_last, rows, cols);
+        checkCudaErrors(cudaGetLastError());
         
         dt = 0.0; // reset largest temperature change
+        checkCudaErrors(cudaMemset(d_dts, 0, nBytes));
 
+        checkCudaErrors(cudaDeviceSynchronize());
         // copy grid to old grid for next iteration and find latest dt
-        for(i = 1; i <= ROWS; i++){
-            for(j = 1; j <= COLUMNS; j++){
-	      dt = fmax( fabs(Temperature[i][j]-Temperature_last[i][j]), dt);
-	      Temperature_last[i][j] = Temperature[i][j];
-            }
-        }
+        tempchange<<<grid, block>>>(d_Temp, d_Temp_last, rows, cols, d_dts);
+        checkCudaErrors(cudaGetLastError());
         
-        // periodically print test values
-        if((iteration % 100) == 0) {
- 	    track_progress(iteration);
+        checkCudaErrors(cudaDeviceSynchronize());
+        //copy dts to host
+        checkCudaErrors(cudaMemcpy(h_dts, d_dts, nBytes, cudaMemcpyDeviceToHost));
+        //find dt
+        for (int i = 0; i < nBytes; i++) {
+            dt = fmax(h_dts[i], dt);
         }
+
+
+        // periodically print test values
+        // if((iteration % 100) == 0) {
+ 	    // track_progress(iteration); *********will need to adjust this at some point
+        // }
 
 	iteration++;
     }
@@ -100,10 +128,18 @@ int main(int argc, char *argv[]) {
     printf("\nMax error at iteration %d was %f\n", iteration-1, dt);
     printf("Total time was %f seconds.\n", elapsed_time.tv_sec+elapsed_time.tv_usec/1000000.0);
 
+    //Deallocate memory
+    checkCudaErrors(cudaFree(d_Temp));
+    checkCudaErrors(cudaFree(d_Temp_last));
+    checkCudaErrors(cudaFree(d_dts));
+    free(h_dts);
+    //reset device
+    checkCudaErrors(cudaDeviceReset());
+
     exit(0);
 }
 
-__global__ void avneighbours(double *Temp, double *Temp_last,int cols, int rows)
+__global__ void avneighbours(double *Temp, double *Temp_last, int rows, int cols)
 {
     int ix = threadIdx.x + blockIdx.x * blockDim.x;
     int iy = threadIdx.y + blockIdx.y * blockDim.y;
@@ -117,7 +153,7 @@ __global__ void avneighbours(double *Temp, double *Temp_last,int cols, int rows)
 
 }
 
-__global__ void tempchange(double *Temp, double *Temp_last, int cols, int rows,
+__global__ void tempchange(double *Temp, double *Temp_last, int rows, int cols,
                             double *dts)
 {
     int ix = threadIdx.x + blockIdx.x * blockDim.x;
@@ -131,15 +167,6 @@ __global__ void tempchange(double *Temp, double *Temp_last, int cols, int rows,
     }
     dts[idx] = dt;
 }
-
-// __global__ void init(double *Temp, double *Temp_last,int cols, int rows)
-// {
-//     int ix = threadIdx.x + blockIdx.x * blockDim.x;
-//     int iy = threadIdx.y + blockIdx.y * blockDim.y;
-//     int idx = iy * cols + ix;
-//     if (ix < cols && iy < rows) Temp_last[idx] = 0.0;
-//     if ()
-// }
 
 // Function definition to print the matrix
 void printMatrix(double *matrix, int rows, int cols) {
