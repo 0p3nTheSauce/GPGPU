@@ -59,7 +59,7 @@ int main(int argc, char *argv[]) {
 
     initialize();                   // initialize Temp_last including boundary conditions
     printMatrix(*Temperature, ROWS+2,COLUMNS+2 );
-    printMatrix(*Temperature_last, ROWS+2,COLUMNS+2 );
+    //printMatrix(*Temperature_last, ROWS+2,COLUMNS+2 );
     // do until error is minimal or until max steps
     while ( dt > MAX_TEMP_ERROR && iteration <= max_iterations ) {
 
@@ -89,7 +89,7 @@ int main(int argc, char *argv[]) {
 	iteration++;
     }
     printMatrix(*Temperature, ROWS+2,COLUMNS+2 );
-    printMatrix(*Temperature_last, ROWS+2,COLUMNS+2 );
+    //printMatrix(*Temperature_last, ROWS+2,COLUMNS+2 );
     gettimeofday(&stop_time,NULL);
 	timersub(&stop_time, &start_time, &elapsed_time); // Unix time subtract routine
 

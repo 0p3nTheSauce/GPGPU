@@ -78,7 +78,7 @@ int main(int argc, char *argv[]) {
 
 
     initialize();                   // initialize Temp_last including boundary conditions
-    printMatrix(*Temperature, rows+2,cols+2 );
+    printMatrix(*Temperature, rows,cols);
 
     //Transfer data from host to device
     checkCudaErrors(cudaMemcpy(d_Temp, Temperature, nBytes, cudaMemcpyHostToDevice));
@@ -125,7 +125,7 @@ int main(int argc, char *argv[]) {
     //copy results back to host
     checkCudaErrors(cudaMemcpy(Temperature, d_Temp, nBytes, cudaMemcpyDeviceToHost));
 
-    printMatrix(*Temperature, ROWS+2,COLUMNS+2 );
+    printMatrix(*Temperature,rows,cols);
     gettimeofday(&stop_time,NULL);
 	timersub(&stop_time, &start_time, &elapsed_time); // Unix time subtract routine
 
@@ -183,11 +183,18 @@ void printMatrix(double *matrix, int rows, int cols) {
     }
 }
 
+
 // initialize plate and boundary conditions
 // Temp_last is used to to start first iteration
 void initialize(){
 
     int i,j;
+
+    // for(i = 0; i < ROWS+2; i++){
+    //     for (j = 0; j < COLUMNS+2; j++){
+    //         Temperature[i][j] = 0.0;
+    //     }
+    // }
 
     for(i = 0; i <= ROWS+1; i++){
         for (j = 0; j <= COLUMNS+1; j++){
