@@ -85,8 +85,11 @@ int main(int argc, char *argv[]) {
     checkCudaErrors(cudaMemcpy(d_Temp_last, Temperature_last, nBytes, cudaMemcpyHostToDevice));
     
     //setup kernel
-    dim3 block(32); //for testing, to change later
+    dim3 block(32, 32); //for testing, to change later
     dim3 grid(1);
+
+    //test if avneighborus working 
+    max_iterations = 1;
 
     // do until error is minimal or until max steps
     while ( dt > MAX_TEMP_ERROR && iteration <= max_iterations ) {
@@ -97,6 +100,10 @@ int main(int argc, char *argv[]) {
         avneighbours<<<grid, block>>>(d_Temp, d_Temp_last, rows, cols);
         checkCudaErrors(cudaGetLastError());
         
+        checkCudaErrors(cudaDeviceSynchronize());
+        checkCudaErrors(cudaMemcpy(Temperature, d_Temp, nBytes, cudaMemcpyDeviceToHost));
+        printMatrix(*Temperature, rows, cols);
+
         dt = 0.0; // reset largest temperature change
         checkCudaErrors(cudaMemset(d_dts, 0, nBytes));
 
