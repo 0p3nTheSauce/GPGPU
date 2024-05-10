@@ -27,8 +27,8 @@
 #include <helper_cuda.h>
 #include <curand_kernel.h>
 
-#define COLUMNS    1000
-#define ROWS       1000
+#define COLUMNS    30//126//10
+#define ROWS       30//94//10
 
 #ifndef MAX_ITER
 #define MAX_ITER 100
@@ -78,20 +78,24 @@ int main(int argc, char *argv[]) {
     double *h_dts;
     h_dts = (double *)malloc(nBytes);
 
-
+    //for printing 
+    int fromRow = 22;//86;
+    int toRow = 32;//96;
+    int fromCol = 22;//118;
+    int toCol = 32;//128;
     initialize();                   // initialize Temp_last including boundary conditions
     printf("Temperature after initialization: ");
-    printMatrixSubset(*Temperature, rows, cols, 990, 1000, 990, 1000);
+    printMatrixSubset(*Temperature, rows, cols, fromRow, toRow, fromCol, toCol);
     //setTo(*Temperature_last, rows, cols, 1.0);
     printf("Temperature_last after initialization: ");
-    printMatrixSubset(*Temperature_last, rows, cols, 990, 1000, 990, 1000);
+    printMatrixSubset(*Temperature_last, rows, cols, fromRow, toRow, fromCol, toCol);
     //Transfer data from host to device
     checkCudaErrors(cudaMemcpy(d_Temp, Temperature, nBytes, cudaMemcpyHostToDevice));
     checkCudaErrors(cudaMemcpy(d_Temp_last, Temperature_last, nBytes, cudaMemcpyHostToDevice));
     
     //setup kernel
     dim3 block(32, 32); //for testing, to change later
-    dim3 grid(1);
+    dim3 grid(3, 4);
 
     //test if kernel working 
     //max_iterations = 1;
@@ -108,10 +112,10 @@ int main(int argc, char *argv[]) {
         checkCudaErrors(cudaDeviceSynchronize());
         checkCudaErrors(cudaMemcpy(Temperature, d_Temp, nBytes, cudaMemcpyDeviceToHost));
         checkCudaErrors(cudaMemcpy(Temperature_last, d_Temp_last, nBytes, cudaMemcpyDeviceToHost));
-        printf("Temperature after kernel: ");
-        printMatrixSubset(*Temperature, rows, cols, 990, 1000, 990, 1000);
-        printf("Temperature_last after kernel: ");
-        printMatrixSubset(*Temperature_last, rows, cols, 990, 1000, 990, 1000);
+        // printf("Temperature after kernel: ");
+        // printMatrixSubset(*Temperature, rows, cols, fromRow, toRow, fromCol, toCol);
+        // printf("Temperature_last after kernel: ");
+        // printMatrixSubset(*Temperature_last, rows, cols, fromRow, toRow, fromCol, toCol);
 
         dt = 0.0; // reset largest temperature change
         //checkCudaErrors(cudaMemset(d_dts, 0, nBytes));
@@ -137,9 +141,9 @@ int main(int argc, char *argv[]) {
     //copy results back to host
     checkCudaErrors(cudaMemcpy(Temperature, d_Temp, nBytes, cudaMemcpyDeviceToHost));
     printf("Temperature after laplace: ");
-    printMatrixSubset(*Temperature, rows, cols, 990, 1000, 990, 1000);
+    printMatrixSubset(*Temperature, rows, cols, fromRow, toRow, fromCol, toCol);
     printf("Temperature_last after laplace: ");
-    printMatrixSubset(*Temperature_last, rows, cols, 990, 1000, 990, 1000);
+    printMatrixSubset(*Temperature_last, rows, cols, fromRow, toRow, fromCol, toCol);
     gettimeofday(&stop_time,NULL);
 	timersub(&stop_time, &start_time, &elapsed_time); // Unix time subtract routine
 
