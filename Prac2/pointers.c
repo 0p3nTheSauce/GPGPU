@@ -2,7 +2,27 @@
 #include <stdlib.h>
 #include <string.h>
 
+
+int pfunc(int *x, int *y) {
+    int lx = *x;
+    int ly = *y;
+    lx = lx + 5;
+    ly = ly + 5;
+    *x = lx;
+    *y = ly;
+    // *x = *x + 5;
+    // *y = *y + 5;
+    // printf("In function: \n");
+    // printf("x: %d   y: %d\n", *x, *y);
+}
+
 int main() {
+    //pointers and functions
+    int x = 5;
+    int y = 4;
+    pfunc(&x, &y);
+    printf("x: %d   y: %d\n", x, y);
+
     //1D arrays and single pointers
     int a[3] = {1, 2, 3};
     int *p = a;

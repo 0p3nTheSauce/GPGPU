@@ -103,6 +103,12 @@ int main(int argc, char *argv[]) {
     exit(0);
 }
 
+void laplace(int *dt, int *iteration) {
+    int max_iterations = MAX_ITER;
+
+}
+
+
 // Function definition to print the matrix
 void printMatrix(double *matrix, int rows, int cols) {
     printf("Matrix:\n");
