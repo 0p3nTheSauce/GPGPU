@@ -109,6 +109,7 @@ int main(int argc, char *argv[]) {
         //copy dts to host
         checkCudaErrors(cudaMemcpy(h_dts, d_dts, nBytes, cudaMemcpyDeviceToHost));
         //find dt
+        checkCudaErrors(cudaDeviceSynchronize());
         for (int i = 0; i < nBytes; i++) {
             dt = fmax(h_dts[i], dt);
         }
@@ -149,7 +150,7 @@ __global__ void avneighbours(double *Temp, double *Temp_last, int rows, int cols
     int iy = threadIdx.y + blockIdx.y * blockDim.y;
     int idx = iy * cols + ix;
 
-    if (ix > 0 && ix < cols-2 && iy > 0 && rows-2) 
+    if (ix > 0 && ix < cols-2 && iy > 0 && iy < rows-2) 
     {
         Temp[idx] = 0.25 * (Temp_last[idx+1] + Temp_last[idx-1] +
                                     Temp_last[idx+cols] + Temp_last[idx-cols]);
