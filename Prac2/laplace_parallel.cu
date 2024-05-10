@@ -121,6 +121,10 @@ int main(int argc, char *argv[]) {
 
 	iteration++;
     }
+
+    //copy results back to host
+    checkCudaErrors(cudaMemcpy(Temperature, d_Temp, nBytes, cudaMemcpyDeviceToHost));
+
     printMatrix(*Temperature, ROWS+2,COLUMNS+2 );
     gettimeofday(&stop_time,NULL);
 	timersub(&stop_time, &start_time, &elapsed_time); // Unix time subtract routine
