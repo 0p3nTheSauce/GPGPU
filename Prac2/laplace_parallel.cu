@@ -47,6 +47,7 @@ void track_progress(int iter);
 // Added by me
 void printMatrix(double *matrix, int rows, int cols);
 void setTo(double *matrix, int rows, int cols, double val);
+void setToInc(double *matrix, int rows, int cols);
 //Kernel prototypes
 __global__ void avn_tmpchng(double *Temp, double *Temp_last, int rows, int cols, double *dts);
 
@@ -79,7 +80,7 @@ int main(int argc, char *argv[]) {
     initialize();                   // initialize Temp_last including boundary conditions
     printf("Temperature after initialization: ");
     printMatrix(*Temperature, rows,cols);
-    //setTo(*Temperature_last, rows, cols, 2.0);
+    // /setToInc(*Temperature_last, rows, cols);
     printf("Temperature_last after initialization: ");
     printMatrix(*Temperature_last, rows, cols);
     //Transfer data from host to device
@@ -90,7 +91,7 @@ int main(int argc, char *argv[]) {
     dim3 block(32, 32); //for testing, to change later
     dim3 grid(1);
 
-    //test if avneighborus working 
+    //test if kernel working 
     max_iterations = 1;
 
     // do until error is minimal or until max steps
@@ -104,8 +105,11 @@ int main(int argc, char *argv[]) {
         
         checkCudaErrors(cudaDeviceSynchronize());
         checkCudaErrors(cudaMemcpy(Temperature, d_Temp, nBytes, cudaMemcpyDeviceToHost));
+        checkCudaErrors(cudaMemcpy(Temperature_last, d_Temp_last, nBytes, cudaMemcpyDeviceToHost));
         printf("Temperature after kernel: ");
         printMatrix(*Temperature, rows, cols);
+        printf("Temperature_last after kernel: ");
+        printMatrix(*Temperature_last, rows, cols);
 
         dt = 0.0; // reset largest temperature change
         //checkCudaErrors(cudaMemset(d_dts, 0, nBytes));
@@ -163,10 +167,9 @@ __global__ void avn_tmpchng(double *Temp, double *Temp_last, int rows, int cols,
         Temp[idx] = 0.25 * (Temp_last[idx+1] + Temp_last[idx-1] +
                                     Temp_last[idx+cols] + Temp_last[idx-cols]);
         dt = fmax(fabs(Temp[idx] - Temp_last[idx]), dt);
-        Temp[idx] = Temp_last[idx];
+        Temp_last[idx] = Temp[idx];
     }
     dts[idx] = dt;
-
 }
 
 
@@ -181,11 +184,23 @@ void printMatrix(double *matrix, int rows, int cols) {
     }
 }
 
+//set all values of a matrix to same values
 void setTo(double *matrix, int rows, int cols, double val) {
     int i, j;
     for (i = 0; i < rows; i++){
         for(j=0; j < cols; j++){
             Temperature_last[i][j] = val;
+        }
+    }
+}
+//set all values of matrix to incrementing valeus
+void setToInc(double *matrix, int rows, int cols) {
+    int i, j;
+    int val = 0;
+    for (i = 0; i < rows; i++){
+        for(j=0; j < cols; j++){
+            Temperature_last[i][j] = val;
+            val++;
         }
     }
 }
