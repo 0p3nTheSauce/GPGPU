@@ -47,9 +47,7 @@ void track_progress(int iter);
 // Added by me
 void printMatrix(double *matrix, int rows, int cols);
 //Kernel prototypes
-__global__ void avneighbours(double *Temp, double *Temp_last, int rows, int cols);
-__global__ void tempchange(double *Temp, double *Temp_last, int rows, int cols,
-                            double *dts);
+__global__ void avn_tmpchng(double *Temp, double *Temp_last, int rows, int cols, double *dts);
 
 int main(int argc, char *argv[]) {
 
@@ -78,8 +76,10 @@ int main(int argc, char *argv[]) {
 
 
     initialize();                   // initialize Temp_last including boundary conditions
+    printf("Temperature after initialization: ");
     printMatrix(*Temperature, rows,cols);
-
+    printf("Temperature_last after initialization: ");
+    printMatrix(*Temperature_last, rows, cols);
     //Transfer data from host to device
     checkCudaErrors(cudaMemcpy(d_Temp, Temperature, nBytes, cudaMemcpyHostToDevice));
     checkCudaErrors(cudaMemcpy(d_Temp_last, Temperature_last, nBytes, cudaMemcpyHostToDevice));
@@ -97,20 +97,16 @@ int main(int argc, char *argv[]) {
 
         checkCudaErrors(cudaDeviceSynchronize());
         // main calculation: average my four neighbors    
-        avneighbours<<<grid, block>>>(d_Temp, d_Temp_last, rows, cols);
+        avn_tmpchng<<<grid, block>>>(d_Temp, d_Temp_last, rows, cols, d_dts);
         checkCudaErrors(cudaGetLastError());
         
         checkCudaErrors(cudaDeviceSynchronize());
         checkCudaErrors(cudaMemcpy(Temperature, d_Temp, nBytes, cudaMemcpyDeviceToHost));
+        printf("Temperature after kernel: ");
         printMatrix(*Temperature, rows, cols);
 
         dt = 0.0; // reset largest temperature change
-        checkCudaErrors(cudaMemset(d_dts, 0, nBytes));
-
-        checkCudaErrors(cudaDeviceSynchronize());
-        // copy grid to old grid for next iteration and find latest dt
-        tempchange<<<grid, block>>>(d_Temp, d_Temp_last, rows, cols, d_dts);
-        checkCudaErrors(cudaGetLastError());
+        //checkCudaErrors(cudaMemset(d_dts, 0, nBytes));
         
         checkCudaErrors(cudaDeviceSynchronize());
         //copy dts to host
@@ -132,8 +128,10 @@ int main(int argc, char *argv[]) {
 
     //copy results back to host
     checkCudaErrors(cudaMemcpy(Temperature, d_Temp, nBytes, cudaMemcpyDeviceToHost));
-
+    printf("Temperature after laplace: ");
     printMatrix(*Temperature,rows,cols);
+    printf("Temperature_last after laplace: ");
+    printMatrix(*Temperature_last, rows ,cols);
     gettimeofday(&stop_time,NULL);
 	timersub(&stop_time, &start_time, &elapsed_time); // Unix time subtract routine
 
@@ -151,21 +149,7 @@ int main(int argc, char *argv[]) {
     exit(0);
 }
 
-__global__ void avneighbours(double *Temp, double *Temp_last, int rows, int cols)
-{
-    int ix = threadIdx.x + blockIdx.x * blockDim.x;
-    int iy = threadIdx.y + blockIdx.y * blockDim.y;
-    int idx = iy * cols + ix;
-
-    if (ix > 0 && ix < cols-2 && iy > 0 && iy < rows-2) 
-    {
-        Temp[idx] = 0.25 * (Temp_last[idx+1] + Temp_last[idx-1] +
-                                    Temp_last[idx+cols] + Temp_last[idx-cols]);
-    }
-
-}
-
-__global__ void tempchange(double *Temp, double *Temp_last, int rows, int cols,
+__global__ void avn_tmpchng(double *Temp, double *Temp_last, int rows, int cols,
                             double *dts)
 {
     int ix = threadIdx.x + blockIdx.x * blockDim.x;
@@ -174,18 +158,22 @@ __global__ void tempchange(double *Temp, double *Temp_last, int rows, int cols,
     double dt = 0;
     if (ix > 0 && ix < cols-2 && iy > 0 && iy < rows-2) 
     {
+        Temp[idx] = 0.25 * (Temp_last[idx+1] + Temp_last[idx-1] +
+                                    Temp_last[idx+cols] + Temp_last[idx-cols]);
         dt = fmax(fabs(Temp[idx] - Temp_last[idx]), dt);
         Temp[idx] = Temp_last[idx];
     }
     dts[idx] = dt;
+
 }
+
 
 // Function definition to print the matrix
 void printMatrix(double *matrix, int rows, int cols) {
     printf("Matrix:\n");
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
-            printf("%f ", *(matrix + i * cols + j));
+            printf("%7.2f ", *(matrix + i * cols + j));
         }
         printf("\n");
     }

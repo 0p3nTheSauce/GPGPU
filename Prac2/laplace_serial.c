@@ -58,7 +58,10 @@ int main(int argc, char *argv[]) {
     gettimeofday(&start_time,NULL); // Unix timer
 
     initialize();                   // initialize Temp_last including boundary conditions
+    printf("Temperature after initialization: ");
     printMatrix(*Temperature, ROWS+2,COLUMNS+2 );
+    printf("Temperature_last after initialization: ");
+    printMatrix(*Temperature_last, ROWS+2,COLUMNS+2 );
     //printMatrix(*Temperature_last, ROWS+2,COLUMNS+2 );
     // do until error is minimal or until max steps
     while ( dt > MAX_TEMP_ERROR && iteration <= max_iterations ) {
@@ -88,6 +91,7 @@ int main(int argc, char *argv[]) {
 
 	iteration++;
     }
+    printf("Temperature after laplace: ");
     printMatrix(*Temperature, ROWS+2,COLUMNS+2 );
     //printMatrix(*Temperature_last, ROWS+2,COLUMNS+2 );
     gettimeofday(&stop_time,NULL);
@@ -104,7 +108,7 @@ void printMatrix(double *matrix, int rows, int cols) {
     printf("Matrix:\n");
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
-            printf("%f ", *(matrix + i * cols + j));
+            printf("%7.2f ", *(matrix + i * cols + j));
         }
         printf("\n");
     }
