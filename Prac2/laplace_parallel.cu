@@ -46,7 +46,7 @@ void initialize();
 void track_progress(int iter);
 // Added by me
 void printMatrix(double *matrix, int rows, int cols);
-void setTo(double *matrix, int rows, int cols);
+void setTo(double *matrix, int rows, int cols, double val);
 //Kernel prototypes
 __global__ void avn_tmpchng(double *Temp, double *Temp_last, int rows, int cols, double *dts);
 
@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
     initialize();                   // initialize Temp_last including boundary conditions
     printf("Temperature after initialization: ");
     printMatrix(*Temperature, rows,cols);
-    setTo(*Temperature_last, rows, cols);
+    //setTo(*Temperature_last, rows, cols, 2.0);
     printf("Temperature_last after initialization: ");
     printMatrix(*Temperature_last, rows, cols);
     //Transfer data from host to device
@@ -181,11 +181,11 @@ void printMatrix(double *matrix, int rows, int cols) {
     }
 }
 
-void setTo(double *matrix, int rows, int cols) {
+void setTo(double *matrix, int rows, int cols, double val) {
     int i, j;
     for (i = 0; i < rows; i++){
         for(j=0; j < cols; j++){
-            Temperature_last[i][j] = 1.0;
+            Temperature_last[i][j] = val;
         }
     }
 }
