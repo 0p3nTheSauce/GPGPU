@@ -27,6 +27,9 @@
 #include <helper_cuda.h>
 #include <curand_kernel.h>
 
+#define COLUMNS    10
+#define ROWS       10
+
 #ifndef MAX_ITER
 #define MAX_ITER 100
 #endif
@@ -34,11 +37,15 @@
 // largest permitted change in temp (This value takes about 3400 steps)
 #define MAX_TEMP_ERROR 0.01
 
+double Temperature[ROWS+2][COLUMNS+2];      // temperature grid
+double Temperature_last[ROWS+2][COLUMNS+2]; // temperature grid from last iteration
+
+
 //   helper routines
-void initialize(int rows, int cols, double **Temp, double **Temp_last);
-void track_progress(int iter, double **Temperature);
+void initialize();
+void track_progress(int iter);
 // Function prototype
-void printMatrix( int rows, int cols, double **matrix);
+void printMatrix(double *matrix, int rows, int cols);
 
 
 int main(int argc, char *argv[]) {
@@ -51,23 +58,13 @@ int main(int argc, char *argv[]) {
 
     const int rows = 10;
     const int cols = 10;
-    double hTemperature[rows+2][cols+2];      // temperature grid
-    double hTemperature_last[rows+2][cols+2]; // temperature grid from last iteration
-    double *hTemp = hTemperature;
-    double *hTemp_last = hTemperature_last;
     
-
-    dim3 block(32, 32, 1);
-    dim3 grid(1, 1, 1);
-    
-
-
     max_iterations = MAX_ITER;
 
     gettimeofday(&start_time,NULL); // Unix timer
 
-    initialize(rows, cols, hTemperature, hTemperature_last);                   // initialize Temp_last including boundary conditions
-    printMatrix(*hTemperature, rows+2,cols+2 );
+    initialize();                   // initialize Temp_last including boundary conditions
+    printMatrix(*Temperature, rows+2,cols+2 );
     // do until error is minimal or until max steps
     while ( dt > MAX_TEMP_ERROR && iteration <= max_iterations ) {
 
@@ -155,11 +152,9 @@ void printMatrix(double *matrix, int rows, int cols) {
     }
 }
 
-
-
 // initialize plate and boundary conditions
 // Temp_last is used to to start first iteration
-void initialize(int rows, int cols, double **Temperature, double **Temperature_last){
+void initialize(){
 
     int i,j;
 
@@ -186,7 +181,7 @@ void initialize(int rows, int cols, double **Temperature, double **Temperature_l
 
 
 // print diagonal in bottom right corner where most action is
-void track_progress(int iteration, double **Temperature) {
+void track_progress(int iteration) {
 
     int i;
 
@@ -196,3 +191,4 @@ void track_progress(int iteration, double **Temperature) {
     }
     printf("\n");
 }
+
