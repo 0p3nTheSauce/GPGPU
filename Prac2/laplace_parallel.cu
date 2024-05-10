@@ -165,7 +165,7 @@ __global__ void tempchange(double *Temp, double *Temp_last, int rows, int cols,
     int iy = threadIdx.y + blockIdx.y * blockDim.y;
     int idx = iy * cols + ix;
     double dt = 0;
-    if (ix > 0 && ix < cols-2 && iy > 0 && rows-2) 
+    if (ix > 0 && ix < cols-2 && iy > 0 && iy < rows-2) 
     {
         dt = fmax(fabs(Temp[idx] - Temp_last[idx]), dt);
         Temp[idx] = Temp_last[idx];
