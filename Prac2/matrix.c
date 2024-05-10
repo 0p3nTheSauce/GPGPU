@@ -26,10 +26,11 @@ void printMatrixSP(int rows, int cols, int *matrix) {
     }
 }
 //Single pointer subset
-void printMatrixSPSub(int rows, int cols, int *matrix, int toRow, int toCol) {
+void printMatrixSPSub(int rows, int cols, int *matrix,
+                     int fromRow, int toRow,int fromCol, int toCol) {
     //printf("Matrix:\n");
-    for (int i = 0; i < toRow; i++) {
-        for (int j = 0; j < toCol; j++) {
+    for (int i = fromRow; i < toRow; i++) {
+        for (int j = fromCol; j < toCol; j++) {
             printf("%d ", *(matrix + i * cols + j));
             //printf("%d ", matrix[i][j]);
         }
@@ -67,7 +68,7 @@ int main(int argc, char **argv) {
         {8,9,10,11},
     };
     printf("Matrix2: \n");
-    printMatrixSPSub(3, 4, *matrix2, 2, 3);
+    printMatrixSPSub(3, 4, *matrix2, 1, 3, 2, 4);
 
 
     //clean up heap
