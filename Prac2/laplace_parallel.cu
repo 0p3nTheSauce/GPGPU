@@ -143,21 +143,20 @@ int main(int argc, char *argv[]) {
 	iteration++;
     }
 
+    gettimeofday(&stop_time,NULL);
     //copy results back to host
     checkCudaErrors(cudaMemcpy(Temperature, d_Temp, nBytes, cudaMemcpyDeviceToHost));
-    
     // checkCudaErrors(cudaMemcpy(Temperature_last, d_Temp_last, nBytes, cudaMemcpyDeviceToHost));
     printf("Temperature after laplace: ");
     printMatrixSubset(*Temperature, rows, cols, fromRow, toRow, fromCol, toCol);
+    // printf("Temperature_last after laplace: ");
+    // printMatrixSubset(*Temperature_last, rows, cols, fromRow, toRow, fromCol, toCol);
     printf("Check result: \n");
     if (checkResult()){
         printf("Results correct\n");
     } else {
         printf("Results incorrect");
     }
-    // printf("Temperature_last after laplace: ");
-    // printMatrixSubset(*Temperature_last, rows, cols, fromRow, toRow, fromCol, toCol);
-    gettimeofday(&stop_time,NULL);
 	timersub(&stop_time, &start_time, &elapsed_time); // Unix time subtract routine
 
     printf("\nMax error at iteration %d was %f\n", iteration-1, dt);
