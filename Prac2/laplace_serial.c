@@ -28,11 +28,11 @@
 #include <string.h>
 
 // size of plate
-#define COLUMNS    10
-#define ROWS       10
+#define COLUMNS    126
+#define ROWS       94
 
 #ifndef MAX_ITER
-#define MAX_ITER 100
+#define MAX_ITER 1
 #endif
 
 // largest permitted change in temp (This value takes about 3400 steps)
@@ -48,8 +48,11 @@ void initialize();
 void track_progress(int iter);
 // Created by me
 void printMatrix(double *matrix, int rows, int cols);
+void printMatrixSubset(double *matrix, int rows, int cols,
+                     int fromRow, int toRow,int fromCol, int toCol);
 void laplace(double *dt, int *iteration);
 int checkResult();
+void setTo(double *matrix, int rows, int cols, double val);
 
 int main(int argc, char *argv[]) {
 
@@ -59,51 +62,59 @@ int main(int argc, char *argv[]) {
     double dt=100;                                       // largest change in t
     struct timeval start_time, stop_time, elapsed_time;  // timers
 
+    int rows = ROWS+2, cols = COLUMNS+2;
+    //for printing 
+    int fromRow = 0;
+    int toRow = 96;
+    int fromCol = 100;
+    int toCol = 128;
+
     max_iterations = MAX_ITER;
 
     gettimeofday(&start_time,NULL); // Unix timer
 
     initialize();                   // initialize Temp_last including boundary conditions
+    setTo(*Temperature_last, rows, cols, 1.0);
     printf("Temperature after initialization: \n");
-    printMatrix(*Temperature, ROWS+2,COLUMNS+2 );
+    printMatrixSubset(*Temperature, rows, cols, fromRow, toRow, fromCol, toCol);
     printf("Temperature_last after initialization: \n");
-    printMatrix(*Temperature_last, ROWS+2,COLUMNS+2 );
+    printMatrixSubset(*Temperature_last, rows, cols, fromRow, toRow, fromCol, toCol);
     //printMatrix(*Temperature_last, ROWS+2,COLUMNS+2 );
 
 
-    // do until error is minimal or until max steps
-    while ( dt > MAX_TEMP_ERROR && iteration <= max_iterations ) {
+    // // do until error is minimal or until max steps
+    // while ( dt > MAX_TEMP_ERROR && iteration <= max_iterations ) {
 
-        // main calculation: average my four neighbors    
-        for(i = 1; i <= ROWS; i++) {
-            for(j = 1; j <= COLUMNS; j++) {
-                Temperature[i][j] = 0.25 * (Temperature_last[i+1][j] + Temperature_last[i-1][j] +
-                                            Temperature_last[i][j+1] + Temperature_last[i][j-1]);
-            }
-        }
+    //     // main calculation: average my four neighbors    
+    //     for(i = 1; i <= ROWS; i++) {
+    //         for(j = 1; j <= COLUMNS; j++) {
+    //             Temperature[i][j] = 0.25 * (Temperature_last[i+1][j] + Temperature_last[i-1][j] +
+    //                                         Temperature_last[i][j+1] + Temperature_last[i][j-1]);
+    //         }
+    //     }
         
-        dt = 0.0; // reset largest temperature change
+    //     dt = 0.0; // reset largest temperature change
 
-        // copy grid to old grid for next iteration and find latest dt
-        for(i = 1; i <= ROWS; i++){
-            for(j = 1; j <= COLUMNS; j++){
-	      dt = fmax( fabs(Temperature[i][j]-Temperature_last[i][j]), dt);
-	      Temperature_last[i][j] = Temperature[i][j];
-            }
-        }
+    //     // copy grid to old grid for next iteration and find latest dt
+    //     for(i = 1; i <= ROWS; i++){
+    //         for(j = 1; j <= COLUMNS; j++){
+	//       dt = fmax( fabs(Temperature[i][j]-Temperature_last[i][j]), dt);
+	//       Temperature_last[i][j] = Temperature[i][j];
+    //         }
+    //     }
         
-        // periodically print test values
-        if((iteration % 100) == 0) {
- 	    track_progress(iteration);
-        }
+    //     // periodically print test values
+    //     if((iteration % 100) == 0) {
+ 	//     track_progress(iteration);
+    //     }
 
-	iteration++;
-    }
+	// iteration++;
+    // }
 
-    //laplace(&dt, &iteration);
+    laplace(&dt, &iteration);
 
     printf("Temperature after laplace: \n");
-    printMatrix(*Temperature, ROWS+2,COLUMNS+2 );
+    printMatrixSubset(*Temperature, rows, cols, fromRow, toRow, fromCol, toCol);
     printf("Check result: \n");
     if (checkResult()){
         printf("Results correct\n");
@@ -165,15 +176,23 @@ void laplace(double *dt, int *iteration) {
 int checkResult(){
     int iteration=1;                                     // current iteration
     double dt=100;
-    int nBytes = (ROWS+2) * (COLUMNS+2) * sizeof(double);
+    int rows = ROWS+2;
+    int cols = COLUMNS+2;
+    int nBytes = (rows) * (cols) * sizeof(double);
     int i, j;
+    const double maxErr = 1e-9; // maximum error for floating point comparison
     memcpy(Temp_Temperature, Temperature, nBytes);
     initialize();
+    setTo(*Temperature_last, rows, cols, 1.0);
     laplace(&dt, &iteration);
     // printMatrix(*Temp_Temperature, ROWS+2, COLUMNS+2);
-    for (i = 0; i < ROWS+2; i++){
-        for (j = 0; j < COLUMNS+2; j++){
-            if (Temp_Temperature[i][j] != Temperature[i][j]) return 0;
+    for (i = 0; i < rows; i++){
+        for (j = 0; j < cols; j++){
+            if (Temp_Temperature[i][j] - Temperature[i][j] > maxErr){
+                printf("Temp_Temperature[%d][%d]: %g\n", i, j, Temp_Temperature[i][j]);
+                printf("Temperature[%d][%d]: %g\n", i, j, Temperature[i][j]);
+                return 0;
+            } 
         }
     }
     return 1;
@@ -190,6 +209,28 @@ void printMatrix(double *matrix, int rows, int cols) {
     }
 }
 
+// Print a subset of the matrix
+void printMatrixSubset(double *matrix, int rows, int cols,
+                     int fromRow, int toRow,int fromCol, int toCol) {
+    printf("Matrix:\n");
+    for (int i = fromRow; i < toRow; i++) {
+        for (int j = fromCol; j < toCol; j++) {
+            printf("%7.2f ", *(matrix + i * cols + j));
+            //printf("%d ", matrix[i][j]);
+        }
+        printf("\n");
+    }
+}
+
+//set all values of a matrix to same values
+void setTo(double *matrix, int rows, int cols, double val) {
+    int i, j;
+    for (i = 0; i < rows; i++){
+        for(j=0; j < cols; j++){
+            Temperature_last[i][j] = val;
+        }
+    }
+}
 
 // initialize plate and boundary conditions
 // Temp_last is used to to start first iteration

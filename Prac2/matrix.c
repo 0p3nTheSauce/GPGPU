@@ -69,7 +69,7 @@ int main(int argc, char **argv) {
     };
     printf("Matrix2: \n");
     printMatrixSPSub(3, 4, *matrix2, 1, 3, 2, 4);
-
+    printf("Matrix2[1][0]: %d", matrix2[1][0]);
 
     //clean up heap
     for (int row=0; row < rows; row++){

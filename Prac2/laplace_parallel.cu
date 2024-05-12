@@ -27,11 +27,11 @@
 #include <helper_cuda.h>
 #include <curand_kernel.h>
 
-#define COLUMNS    30//126//10
-#define ROWS       30//94//10
+#define COLUMNS    126
+#define ROWS       94
 
 #ifndef MAX_ITER
-#define MAX_ITER 100
+#define MAX_ITER 1//100
 #endif
 
 // largest permitted change in temp (This value takes about 3400 steps)
@@ -55,7 +55,8 @@ void setToInc(double *matrix, int rows, int cols);
 void laplace(double *dt, int *iteration);
 int checkResult();
 //Kernel prototypes
-__global__ void avn_tmpchng(double *Temp, double *Temp_last, int rows, int cols, double *dts);
+__global__ void avn_tmpchng(double *Temp, double *Temp_last, int rows, int cols, double *dts,
+                            int repKright, int repKdown);
 
 int main(int argc, char *argv[]) {
 
@@ -83,14 +84,14 @@ int main(int argc, char *argv[]) {
     h_dts = (double *)malloc(nBytes);
 
     //for printing 
-    int fromRow = 22;//86;
-    int toRow = 32;//96;
-    int fromCol = 22;//118;
-    int toCol = 32;//128;
+    int fromRow = 0;
+    int toRow = 96;
+    int fromCol = 100;
+    int toCol = 128;
     initialize();                   // initialize Temp_last including boundary conditions
     printf("Temperature after initialization: ");
     printMatrixSubset(*Temperature, rows, cols, fromRow, toRow, fromCol, toCol);
-    //setTo(*Temperature_last, rows, cols, 1.0);
+    setTo(*Temperature_last, rows, cols, 1.0);
     // printf("Temperature_last after initialization: ");
     // printMatrixSubset(*Temperature_last, rows, cols, fromRow, toRow, fromCol, toCol);
     //Transfer data from host to device
@@ -101,47 +102,57 @@ int main(int argc, char *argv[]) {
     dim3 block(32, 32); //for testing, to change later
     dim3 grid(3, 4);
 
+    int repKright = cols / 128;//repeat Kernel Right
+    int repKdown = rows / 96;//grid dim (chnage later to not hard coded)
+    if (cols % 128 > 0){
+        repKright++; //round up
+    }
+    if (rows % 96 > 0){
+        repKdown++; //round up
+    }
+
     //test if kernel working 
     //max_iterations = 1;
 
-    // do until error is minimal or until max steps
-    while ( dt > MAX_TEMP_ERROR && iteration <= max_iterations ) {
+    // // do until error is minimal or until max steps
+    // while ( dt > MAX_TEMP_ERROR && iteration <= max_iterations ) {
 
 
-        checkCudaErrors(cudaDeviceSynchronize());
-        // main calculation: average my four neighbors    
-        avn_tmpchng<<<grid, block>>>(d_Temp, d_Temp_last, rows, cols, d_dts);
-        checkCudaErrors(cudaGetLastError());
+    //     checkCudaErrors(cudaDeviceSynchronize());
+    //     // main calculation: average my four neighbors    
+    //     avn_tmpchng<<<grid, block>>>(d_Temp, d_Temp_last, rows, cols, d_dts, repKright ,repKdown);
+    //     checkCudaErrors(cudaGetLastError());
         
-        checkCudaErrors(cudaDeviceSynchronize());
-        checkCudaErrors(cudaMemcpy(Temperature, d_Temp, nBytes, cudaMemcpyDeviceToHost));
-        checkCudaErrors(cudaMemcpy(Temperature_last, d_Temp_last, nBytes, cudaMemcpyDeviceToHost));
-        // printf("Temperature after kernel: ");
-        // printMatrixSubset(*Temperature, rows, cols, fromRow, toRow, fromCol, toCol);
-        // printf("Temperature_last after kernel: ");
-        // printMatrixSubset(*Temperature_last, rows, cols, fromRow, toRow, fromCol, toCol);
+    //     checkCudaErrors(cudaDeviceSynchronize());
+    //     checkCudaErrors(cudaMemcpy(Temperature, d_Temp, nBytes, cudaMemcpyDeviceToHost));
+    //     checkCudaErrors(cudaMemcpy(Temperature_last, d_Temp_last, nBytes, cudaMemcpyDeviceToHost));
+    //     // printf("Temperature after kernel: ");
+    //     // printMatrixSubset(*Temperature, rows, cols, fromRow, toRow, fromCol, toCol);
+    //     // printf("Temperature_last after kernel: ");
+    //     // printMatrixSubset(*Temperature_last, rows, cols, fromRow, toRow, fromCol, toCol);
 
-        dt = 0.0; // reset largest temperature change
-        //checkCudaErrors(cudaMemset(d_dts, 0, nBytes));
+    //     dt = 0.0; // reset largest temperature change
+    //     //checkCudaErrors(cudaMemset(d_dts, 0, nBytes));
         
-        checkCudaErrors(cudaDeviceSynchronize());
-        //copy dts to host
-        checkCudaErrors(cudaMemcpy(h_dts, d_dts, nBytes, cudaMemcpyDeviceToHost));
-        //find dt
-        checkCudaErrors(cudaDeviceSynchronize());
-        for (int i = 0; i < nBytes; i++) {
-            dt = fmax(h_dts[i], dt);
-        }
+    //     checkCudaErrors(cudaDeviceSynchronize());
+    //     //copy dts to host
+    //     checkCudaErrors(cudaMemcpy(h_dts, d_dts, nBytes, cudaMemcpyDeviceToHost));
+    //     //find dt
+    //     checkCudaErrors(cudaDeviceSynchronize());
+    //     for (int i = 0; i < nBytes; i++) {
+    //         dt = fmax(h_dts[i], dt);
+    //     }
 
 
-        //periodically print test values
-        if((iteration % 100) == 0) {
-            checkCudaErrors(cudaMemcpy(Temperature, d_Temp, nBytes, cudaMemcpyDeviceToHost));
- 	        track_progress(iteration); 
-        }
+    //     //periodically print test values
+    //     if((iteration % 100) == 0) {
+    //         checkCudaErrors(cudaMemcpy(Temperature, d_Temp, nBytes, cudaMemcpyDeviceToHost));
+ 	//         track_progress(iteration); 
+    //     }
 
-	iteration++;
-    }
+	// iteration++;
+    // }
+    laplace(&dt, &iteration);
 
     gettimeofday(&stop_time,NULL);
     //copy results back to host
@@ -151,16 +162,17 @@ int main(int argc, char *argv[]) {
     printMatrixSubset(*Temperature, rows, cols, fromRow, toRow, fromCol, toCol);
     // printf("Temperature_last after laplace: ");
     // printMatrixSubset(*Temperature_last, rows, cols, fromRow, toRow, fromCol, toCol);
-    printf("Check result: \n");
-    if (checkResult()){
-        printf("Results correct\n");
-    } else {
-        printf("Results incorrect");
-    }
 	timersub(&stop_time, &start_time, &elapsed_time); // Unix time subtract routine
 
     printf("\nMax error at iteration %d was %f\n", iteration-1, dt);
     printf("Total time was %f seconds.\n", elapsed_time.tv_sec+elapsed_time.tv_usec/1000000.0);
+
+    printf("Check result: \n");
+    if (checkResult()){
+        printf("Results correct\n");
+    } else {
+        printf("Results incorrect\n");
+    }
 
     //Deallocate memory
     checkCudaErrors(cudaFree(d_Temp));
@@ -174,20 +186,30 @@ int main(int argc, char *argv[]) {
 }
 
 __global__ void avn_tmpchng(double *Temp, double *Temp_last, int rows, int cols,
-                            double *dts)
+                            double *dts, int repKright, int repKdown)
 {
     int ix = threadIdx.x + blockIdx.x * blockDim.x;
     int iy = threadIdx.y + blockIdx.y * blockDim.y;
-    int idx = iy * cols + ix;
+    int idx;
     double dt = 0;
-    if (ix > 0 && ix < cols-1 && iy > 0 && iy < rows-1) 
-    {
-        Temp[idx] = 0.25 * (Temp_last[idx+1] + Temp_last[idx-1] +
-                                    Temp_last[idx+cols] + Temp_last[idx-cols]);
-        dt = fmax(fabs(Temp[idx] - Temp_last[idx]), dt);
-        Temp_last[idx] = Temp[idx];
+    int moveR = 128;
+    int moveD = 96;
+    for (int i = 0; i < repKdown; i++){ //move the grid down 
+        for (int j = 0; j < repKright; j++){ //move the grid right
+            idx = iy * cols + ix;
+            if (ix > 0 && ix < cols-1 && iy > 0 && iy < rows-1) 
+            {
+                Temp[idx] = 0.25 * (Temp_last[idx+1] + Temp_last[idx-1] +
+                                            Temp_last[idx+cols] + Temp_last[idx-cols]);
+                dt = fmax(fabs(Temp[idx] - Temp_last[idx]), dt);
+                Temp_last[idx] = Temp[idx];
+                dts[idx] = dt;
+            }
+            
+            ix += moveR;
+        }
+        iy += moveD;
     }
-    dts[idx] = dt;
 }
 
 //laplace algorithm as a function
@@ -235,21 +257,23 @@ void laplace(double *dt, int *iteration) {
 int checkResult(){
     int iteration=1;                                     // current iteration
     double dt=100;
-    int nBytes = (ROWS+2) * (COLUMNS+2) * sizeof(double);
+    int rows = ROWS+2;
+    int cols = COLUMNS+2;
+    int nBytes = (rows) * (cols) * sizeof(double);
     int i, j;
     const double maxErr = 1e-9; // maximum error for floating point comparison
     memcpy(Temp_Temperature, Temperature, nBytes);
     initialize();
+    setTo(*Temperature_last, rows, cols, 1.0);
     laplace(&dt, &iteration);
     // printMatrix(*Temp_Temperature, ROWS+2, COLUMNS+2);
-    for (i = 0; i < ROWS+2; i++){
-        for (j = 0; j < COLUMNS+2; j++){
-            if (Temp_Temperature[i][j] - Temperature[i][j] > maxErr){
+    for (i = 0; i < rows; i++){
+        for (j = 0; j < cols; j++){
+            if (abs(Temp_Temperature[i][j] - Temperature[i][j]) > maxErr){
                 printf("Temp_Temperature[%d][%d]: %g\n", i, j, Temp_Temperature[i][j]);
                 printf("Temperature[%d][%d]: %g\n", i, j, Temperature[i][j]);
                 return 0;
             } 
-
         }
     }
     return 1;
