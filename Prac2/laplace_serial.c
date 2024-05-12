@@ -66,6 +66,7 @@ int main(int argc, char *argv[]) {
     //printMatrix(*Temperature_last, ROWS+2,COLUMNS+2 );
 
     laplace(&dt, &iteration);
+    
 
     printf("Temperature after laplace: ");
     printMatrix(*Temperature, ROWS+2,COLUMNS+2 );
@@ -83,8 +84,8 @@ int main(int argc, char *argv[]) {
 void laplace(double *dt, int *iteration) {
     //create local variables
     int max_iterations = MAX_ITER;
-    int local_dt = *dt;
-    int local_iteration = 1;
+    double local_dt = *dt;
+    int local_iteration = *iteration;
     int i, j;
     //laplace algorithm
     // do until error is minimal or until max steps
