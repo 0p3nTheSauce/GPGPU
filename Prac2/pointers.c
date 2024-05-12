@@ -3,7 +3,7 @@
 #include <string.h>
 
 
-int pfunc(int *x, int *y) {
+void pfunc(int *x, int *y) {
     int lx = *x;
     int ly = *y;
     lx = lx + 5;
@@ -16,11 +16,15 @@ int pfunc(int *x, int *y) {
     // printf("x: %d   y: %d\n", *x, *y);
 }
 
+void pfunc2(int *x, int *y){
+    pfunc(x, y);
+}
+
 int main() {
     //pointers and functions
     int x = 5;
     int y = 4;
-    pfunc(&x, &y);
+    pfunc2(&x, &y);
     printf("x: %d   y: %d\n", x, y);
 
     //1D arrays and single pointers

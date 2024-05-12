@@ -24,6 +24,8 @@
 #include <stdio.h>
 #include <math.h>
 #include <sys/time.h>
+//Added by me 
+#include <string.h>
 
 // size of plate
 #define COLUMNS    10
@@ -38,6 +40,8 @@
 
 double Temperature[ROWS+2][COLUMNS+2];      // temperature grid
 double Temperature_last[ROWS+2][COLUMNS+2]; // temperature grid from last iteration
+//Added by me
+double Temp_Temperature[ROWS+2][COLUMNS+2]; //used to temporarily store the values of Temperature
 
 //   helper routines
 void initialize();
@@ -45,6 +49,7 @@ void track_progress(int iter);
 // Created by me
 void printMatrix(double *matrix, int rows, int cols);
 void laplace(double *dt, int *iteration);
+int checkResult();
 
 int main(int argc, char *argv[]) {
 
@@ -59,17 +64,52 @@ int main(int argc, char *argv[]) {
     gettimeofday(&start_time,NULL); // Unix timer
 
     initialize();                   // initialize Temp_last including boundary conditions
-    printf("Temperature after initialization: ");
+    printf("Temperature after initialization: \n");
     printMatrix(*Temperature, ROWS+2,COLUMNS+2 );
-    printf("Temperature_last after initialization: ");
+    printf("Temperature_last after initialization: \n");
     printMatrix(*Temperature_last, ROWS+2,COLUMNS+2 );
     //printMatrix(*Temperature_last, ROWS+2,COLUMNS+2 );
 
-    laplace(&dt, &iteration);
-    
 
-    printf("Temperature after laplace: ");
+    // do until error is minimal or until max steps
+    while ( dt > MAX_TEMP_ERROR && iteration <= max_iterations ) {
+
+        // main calculation: average my four neighbors    
+        for(i = 1; i <= ROWS; i++) {
+            for(j = 1; j <= COLUMNS; j++) {
+                Temperature[i][j] = 0.25 * (Temperature_last[i+1][j] + Temperature_last[i-1][j] +
+                                            Temperature_last[i][j+1] + Temperature_last[i][j-1]);
+            }
+        }
+        
+        dt = 0.0; // reset largest temperature change
+
+        // copy grid to old grid for next iteration and find latest dt
+        for(i = 1; i <= ROWS; i++){
+            for(j = 1; j <= COLUMNS; j++){
+	      dt = fmax( fabs(Temperature[i][j]-Temperature_last[i][j]), dt);
+	      Temperature_last[i][j] = Temperature[i][j];
+            }
+        }
+        
+        // periodically print test values
+        if((iteration % 100) == 0) {
+ 	    track_progress(iteration);
+        }
+
+	iteration++;
+    }
+
+    //laplace(&dt, &iteration);
+
+    printf("Temperature after laplace: \n");
     printMatrix(*Temperature, ROWS+2,COLUMNS+2 );
+    printf("Check result: \n");
+    if (checkResult()){
+        printf("Results correct\n");
+    } else {
+        printf("Results incorrect");
+    }
     //printMatrix(*Temperature_last, ROWS+2,COLUMNS+2 );
     gettimeofday(&stop_time,NULL);
 	timersub(&stop_time, &start_time, &elapsed_time); // Unix time subtract routine
@@ -121,10 +161,27 @@ void laplace(double *dt, int *iteration) {
     *iteration = local_iteration;
 }
 
+//check that the output is correct
+int checkResult(){
+    int iteration=1;                                     // current iteration
+    double dt=100;
+    int nBytes = (ROWS+2) * (COLUMNS+2) * sizeof(double);
+    int i, j;
+    memcpy(Temp_Temperature, Temperature, nBytes);
+    initialize();
+    laplace(&dt, &iteration);
+    // printMatrix(*Temp_Temperature, ROWS+2, COLUMNS+2);
+    for (i = 0; i < ROWS+2; i++){
+        for (j = 0; j < COLUMNS+2; j++){
+            if (Temp_Temperature[i][j] != Temperature[i][j]) return 0;
+        }
+    }
+    return 1;
+}
 
 // Function definition to print the matrix
 void printMatrix(double *matrix, int rows, int cols) {
-    printf("Matrix:\n");
+    // printf("Matrix:\n");
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
             printf("%7.2f ", *(matrix + i * cols + j));
