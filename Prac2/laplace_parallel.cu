@@ -102,6 +102,9 @@ int main(int argc, char *argv[]) {
     dim3 block(1024); //for testing, to change later
     dim3 grid(12);
     int workPT = (rows * cols) / 12288;
+    if ((rows * cols) % 12288 != 0){
+        workPT++; //round up
+    }
 
     //test if kernel working 
     //max_iterations = 1;
@@ -188,11 +191,11 @@ __global__ void avn_tmpchng(double *Temp, double *Temp_last, int rows, int cols,
     int startIdx = tid * workPT;
     for (int idx = startIdx; idx < startIdx + workPT; idx++){
         if (idx > cols && idx < (cols * (rows - 1)) && idx % cols != 0 && (idx+1) % cols != 0 ) {
-        //     Temp[idx] = 0.25 * (Temp_last[idx+1] + Temp_last[idx-1] +
-        //                             Temp_last[idx+cols] + Temp_last[idx-cols]);
-        //     dt = fmax(fabs(Temp[idx] - Temp_last[idx]), dt);
-        //     Temp_last[idx] = Temp[idx];
-               Temp[idx] = 1.11;
+            Temp[idx] = 0.25 * (Temp_last[idx+1] + Temp_last[idx-1] +
+                                    Temp_last[idx+cols] + Temp_last[idx-cols]);
+            dt = fmax(fabs(Temp[idx] - Temp_last[idx]), dt);
+            Temp_last[idx] = Temp[idx];
+               //Temp[idx] = 1.11; for testing
         }
         if (idx < cols * rows){
             dts[idx] = dt;
