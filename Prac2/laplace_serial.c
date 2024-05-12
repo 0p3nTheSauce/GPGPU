@@ -42,8 +42,9 @@ double Temperature_last[ROWS+2][COLUMNS+2]; // temperature grid from last iterat
 //   helper routines
 void initialize();
 void track_progress(int iter);
-// Function prototype
+// Created by me
 void printMatrix(double *matrix, int rows, int cols);
+void laplace(double *dt, int *iteration);
 
 int main(int argc, char *argv[]) {
 
@@ -63,34 +64,9 @@ int main(int argc, char *argv[]) {
     printf("Temperature_last after initialization: ");
     printMatrix(*Temperature_last, ROWS+2,COLUMNS+2 );
     //printMatrix(*Temperature_last, ROWS+2,COLUMNS+2 );
-    // do until error is minimal or until max steps
-    while ( dt > MAX_TEMP_ERROR && iteration <= max_iterations ) {
 
-        // main calculation: average my four neighbors    
-        for(i = 1; i <= ROWS; i++) {
-            for(j = 1; j <= COLUMNS; j++) {
-                Temperature[i][j] = 0.25 * (Temperature_last[i+1][j] + Temperature_last[i-1][j] +
-                                            Temperature_last[i][j+1] + Temperature_last[i][j-1]);
-            }
-        }
-        
-        dt = 0.0; // reset largest temperature change
+    laplace(&dt, &iteration);
 
-        // copy grid to old grid for next iteration and find latest dt
-        for(i = 1; i <= ROWS; i++){
-            for(j = 1; j <= COLUMNS; j++){
-	      dt = fmax( fabs(Temperature[i][j]-Temperature_last[i][j]), dt);
-	      Temperature_last[i][j] = Temperature[i][j];
-            }
-        }
-        
-        // periodically print test values
-        if((iteration % 100) == 0) {
- 	    track_progress(iteration);
-        }
-
-	iteration++;
-    }
     printf("Temperature after laplace: ");
     printMatrix(*Temperature, ROWS+2,COLUMNS+2 );
     //printMatrix(*Temperature_last, ROWS+2,COLUMNS+2 );
@@ -104,13 +80,14 @@ int main(int argc, char *argv[]) {
 }
 
 //laplace algorithm as a function
-void laplace(int *dt, int *iteration) {
+void laplace(double *dt, int *iteration) {
     //create local variables
     int max_iterations = MAX_ITER;
     int local_dt = *dt;
     int local_iteration = 1;
     int i, j;
     //laplace algorithm
+    // do until error is minimal or until max steps
     while ( local_dt > MAX_TEMP_ERROR && local_iteration <= max_iterations ) {
 
         // main calculation: average my four neighbors    
