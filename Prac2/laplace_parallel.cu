@@ -56,7 +56,7 @@ void laplace(double *dt, int *iteration);
 int checkResult();
 //Kernel prototypes
 __global__ void avn_tmpchng(double *Temp, double *Temp_last, int rows, int cols, double *dts,
-                            int repKright, int repKdown);
+                            int workPT);
 
 int main(int argc, char *argv[]) {
 
@@ -86,8 +86,8 @@ int main(int argc, char *argv[]) {
     //for printing 
     int fromRow = 0;
     int toRow = 192;
-    int fromCol = 0;
-    int toCol = 29;
+    int fromCol = 234;
+    int toCol = 256;
     initialize();                   // initialize Temp_last including boundary conditions
     setTo(*Temperature, rows, cols, 0.0);
     printf("Temperature after initialization: ");
@@ -99,17 +99,9 @@ int main(int argc, char *argv[]) {
     checkCudaErrors(cudaMemcpy(d_Temp_last, Temperature_last, nBytes, cudaMemcpyHostToDevice));
     
     //setup kernel
-    dim3 block(32, 32); //for testing, to change later
-    dim3 grid(3, 4);
-
-    int repKright = cols / 128;//repeat Kernel Right
-    int repKdown = rows / 96;//grid dim (chnage later to not hard coded)
-    if (cols % 128 > 0){
-        repKright++; //round up
-    }
-    if (rows % 96 > 0){
-        repKdown++; //round up
-    }
+    dim3 block(1024); //for testing, to change later
+    dim3 grid(12);
+    int workPT = (rows * cols) / 12288;
 
     //test if kernel working 
     //max_iterations = 1;
@@ -120,7 +112,7 @@ int main(int argc, char *argv[]) {
 
         checkCudaErrors(cudaDeviceSynchronize());
         // main calculation: average my four neighbors    
-        avn_tmpchng<<<grid, block>>>(d_Temp, d_Temp_last, rows, cols, d_dts, repKright ,repKdown);
+        avn_tmpchng<<<grid, block>>>(d_Temp, d_Temp_last, rows, cols, d_dts, workPT);
         checkCudaErrors(cudaGetLastError());
         
         checkCudaErrors(cudaDeviceSynchronize());
@@ -186,31 +178,29 @@ int main(int argc, char *argv[]) {
 }
 
 __global__ void avn_tmpchng(double *Temp, double *Temp_last, int rows, int cols,
-                            double *dts, int repKright, int repKdown)
+                            double *dts, int workPT)
 {
     int ix = threadIdx.x + blockIdx.x * blockDim.x;
     int iy = threadIdx.y + blockIdx.y * blockDim.y;
-    int idx = iy * cols + ix;
+    int tid = iy * cols + ix;
     double dt = 0;
-    int moveR = 128;
-    int moveD = 96;
-    for (int i = 0; i < repKdown; i++){ //move the grid down 
-        for (int j = 0; j < repKright; j++){ //move the grid right
-            idx = iy * cols + ix;
-            if (ix > 0 && ix < cols-1 && iy > 0 && iy < rows-1) 
-            {
-                Temp[idx] = 0.25 * (Temp_last[idx+1] + Temp_last[idx-1] +
-                                            Temp_last[idx+cols] + Temp_last[idx-cols]);
-                dt = fmax(fabs(Temp[idx] - Temp_last[idx]), dt);
-                Temp_last[idx] = Temp[idx];
-                dts[idx] = dt;
-            }
-            dts[idx] = dt;
-            ix += moveR;
+    
+    int startIdx = tid * workPT;
+    for (int idx = startIdx; idx < startIdx + workPT; idx++){
+        if (idx > cols && idx < (cols * (rows - 1)) && idx % cols != 0 && (idx+1) % cols != 0 ) {
+        //     Temp[idx] = 0.25 * (Temp_last[idx+1] + Temp_last[idx-1] +
+        //                             Temp_last[idx+cols] + Temp_last[idx-cols]);
+        //     dt = fmax(fabs(Temp[idx] - Temp_last[idx]), dt);
+        //     Temp_last[idx] = Temp[idx];
+               Temp[idx] = 1.11;
         }
-        iy += moveD;
+        if (idx < cols * rows){
+            dts[idx] = dt;
+        }
+        
     }
 }
+
 
 //laplace algorithm as a function
 void laplace(double *dt, int *iteration) {
