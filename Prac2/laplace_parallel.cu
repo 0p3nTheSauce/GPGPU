@@ -39,6 +39,8 @@
 
 double Temperature[ROWS+2][COLUMNS+2];      // temperature grid
 double Temperature_last[ROWS+2][COLUMNS+2]; // temperature grid from last iteration
+//Added by me
+double Temp_Temperature[ROWS+2][COLUMNS+2]; //used to temporarily store the values of Temperature
 
 
 //   helper routines
@@ -50,6 +52,8 @@ void printMatrixSubset(double *matrix, int rows, int cols,
                      int fromRow, int toRow,int fromCol, int toCol);
 void setTo(double *matrix, int rows, int cols, double val);
 void setToInc(double *matrix, int rows, int cols);
+void laplace(double *dt, int *iteration);
+int checkResult();
 //Kernel prototypes
 __global__ void avn_tmpchng(double *Temp, double *Temp_last, int rows, int cols, double *dts);
 
@@ -87,8 +91,8 @@ int main(int argc, char *argv[]) {
     printf("Temperature after initialization: ");
     printMatrixSubset(*Temperature, rows, cols, fromRow, toRow, fromCol, toCol);
     //setTo(*Temperature_last, rows, cols, 1.0);
-    printf("Temperature_last after initialization: ");
-    printMatrixSubset(*Temperature_last, rows, cols, fromRow, toRow, fromCol, toCol);
+    // printf("Temperature_last after initialization: ");
+    // printMatrixSubset(*Temperature_last, rows, cols, fromRow, toRow, fromCol, toCol);
     //Transfer data from host to device
     checkCudaErrors(cudaMemcpy(d_Temp, Temperature, nBytes, cudaMemcpyHostToDevice));
     checkCudaErrors(cudaMemcpy(d_Temp_last, Temperature_last, nBytes, cudaMemcpyHostToDevice));
@@ -130,20 +134,29 @@ int main(int argc, char *argv[]) {
         }
 
 
-        // periodically print test values
-        // if((iteration % 100) == 0) {
- 	    // track_progress(iteration); *********will need to adjust this at some point
-        // }
+        //periodically print test values
+        if((iteration % 100) == 0) {
+            checkCudaErrors(cudaMemcpy(Temperature, d_Temp, nBytes, cudaMemcpyDeviceToHost));
+ 	        track_progress(iteration); 
+        }
 
 	iteration++;
     }
 
     //copy results back to host
     checkCudaErrors(cudaMemcpy(Temperature, d_Temp, nBytes, cudaMemcpyDeviceToHost));
+    
+    // checkCudaErrors(cudaMemcpy(Temperature_last, d_Temp_last, nBytes, cudaMemcpyDeviceToHost));
     printf("Temperature after laplace: ");
     printMatrixSubset(*Temperature, rows, cols, fromRow, toRow, fromCol, toCol);
-    printf("Temperature_last after laplace: ");
-    printMatrixSubset(*Temperature_last, rows, cols, fromRow, toRow, fromCol, toCol);
+    printf("Check result: \n");
+    if (checkResult()){
+        printf("Results correct\n");
+    } else {
+        printf("Results incorrect");
+    }
+    // printf("Temperature_last after laplace: ");
+    // printMatrixSubset(*Temperature_last, rows, cols, fromRow, toRow, fromCol, toCol);
     gettimeofday(&stop_time,NULL);
 	timersub(&stop_time, &start_time, &elapsed_time); // Unix time subtract routine
 
@@ -178,6 +191,70 @@ __global__ void avn_tmpchng(double *Temp, double *Temp_last, int rows, int cols,
     dts[idx] = dt;
 }
 
+//laplace algorithm as a function
+void laplace(double *dt, int *iteration) {
+    //create local variables
+    int max_iterations = MAX_ITER;
+    double local_dt = *dt;
+    int local_iteration = *iteration;
+    int i, j;
+    //laplace algorithm
+    // do until error is minimal or until max steps
+    while ( local_dt > MAX_TEMP_ERROR && local_iteration <= max_iterations ) {
+
+        // main calculation: average my four neighbors    
+        for(i = 1; i <= ROWS; i++) {
+            for(j = 1; j <= COLUMNS; j++) {
+                Temperature[i][j] = 0.25 * (Temperature_last[i+1][j] + Temperature_last[i-1][j] +
+                                            Temperature_last[i][j+1] + Temperature_last[i][j-1]);
+            }
+        }
+        
+        local_dt = 0.0; // reset largest temperature change
+
+        // copy grid to old grid for next iteration and find latest dt
+        for(i = 1; i <= ROWS; i++){
+            for(j = 1; j <= COLUMNS; j++){
+	      local_dt = fmax( fabs(Temperature[i][j]-Temperature_last[i][j]), local_dt);
+	      Temperature_last[i][j] = Temperature[i][j];
+            }
+        }
+        
+        // periodically print test values
+        if((local_iteration % 100) == 0) {
+ 	    track_progress(local_iteration);
+        }
+
+	local_iteration++;
+    }
+    //pass dt and iterations back to main
+    *dt = local_dt;
+    *iteration = local_iteration;
+}
+
+//check that the output is correct
+int checkResult(){
+    int iteration=1;                                     // current iteration
+    double dt=100;
+    int nBytes = (ROWS+2) * (COLUMNS+2) * sizeof(double);
+    int i, j;
+    const double maxErr = 1e-9; // maximum error for floating point comparison
+    memcpy(Temp_Temperature, Temperature, nBytes);
+    initialize();
+    laplace(&dt, &iteration);
+    // printMatrix(*Temp_Temperature, ROWS+2, COLUMNS+2);
+    for (i = 0; i < ROWS+2; i++){
+        for (j = 0; j < COLUMNS+2; j++){
+            if (Temp_Temperature[i][j] - Temperature[i][j] > maxErr){
+                printf("Temp_Temperature[%d][%d]: %g\n", i, j, Temp_Temperature[i][j]);
+                printf("Temperature[%d][%d]: %g\n", i, j, Temperature[i][j]);
+                return 0;
+            } 
+
+        }
+    }
+    return 1;
+}
 
 // Print the matrix
 void printMatrix(double *matrix, int rows, int cols) {
