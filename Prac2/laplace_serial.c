@@ -103,9 +103,44 @@ int main(int argc, char *argv[]) {
     exit(0);
 }
 
+//laplace algorithm as a function
 void laplace(int *dt, int *iteration) {
+    //create local variables
     int max_iterations = MAX_ITER;
+    int local_dt = *dt;
+    int local_iteration = 1;
+    int i, j;
+    //laplace algorithm
+    while ( local_dt > MAX_TEMP_ERROR && local_iteration <= max_iterations ) {
 
+        // main calculation: average my four neighbors    
+        for(i = 1; i <= ROWS; i++) {
+            for(j = 1; j <= COLUMNS; j++) {
+                Temperature[i][j] = 0.25 * (Temperature_last[i+1][j] + Temperature_last[i-1][j] +
+                                            Temperature_last[i][j+1] + Temperature_last[i][j-1]);
+            }
+        }
+        
+        local_dt = 0.0; // reset largest temperature change
+
+        // copy grid to old grid for next iteration and find latest dt
+        for(i = 1; i <= ROWS; i++){
+            for(j = 1; j <= COLUMNS; j++){
+	      local_dt = fmax( fabs(Temperature[i][j]-Temperature_last[i][j]), local_dt);
+	      Temperature_last[i][j] = Temperature[i][j];
+            }
+        }
+        
+        // periodically print test values
+        if((local_iteration % 100) == 0) {
+ 	    track_progress(local_iteration);
+        }
+
+	local_iteration++;
+    }
+    //pass dt and iterations back to main
+    *dt = local_dt;
+    *iteration = local_iteration;
 }
 
 
