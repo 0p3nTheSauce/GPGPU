@@ -32,7 +32,7 @@
 #define ROWS       94
 
 #ifndef MAX_ITER
-#define MAX_ITER 1
+#define MAX_ITER 100
 #endif
 
 // largest permitted change in temp (This value takes about 3400 steps)
@@ -74,7 +74,6 @@ int main(int argc, char *argv[]) {
     gettimeofday(&start_time,NULL); // Unix timer
 
     initialize();                   // initialize Temp_last including boundary conditions
-    setTo(*Temperature_last, rows, cols, 1.0);
     printf("Temperature after initialization: \n");
     printMatrixSubset(*Temperature, rows, cols, fromRow, toRow, fromCol, toCol);
     printf("Temperature_last after initialization: \n");
@@ -183,12 +182,11 @@ int checkResult(){
     const double maxErr = 1e-9; // maximum error for floating point comparison
     memcpy(Temp_Temperature, Temperature, nBytes);
     initialize();
-    setTo(*Temperature_last, rows, cols, 1.0);
     laplace(&dt, &iteration);
     // printMatrix(*Temp_Temperature, ROWS+2, COLUMNS+2);
     for (i = 0; i < rows; i++){
         for (j = 0; j < cols; j++){
-            if (Temp_Temperature[i][j] - Temperature[i][j] > maxErr){
+            if (abs(Temp_Temperature[i][j] - Temperature[i][j]) > maxErr){
                 printf("Temp_Temperature[%d][%d]: %g\n", i, j, Temp_Temperature[i][j]);
                 printf("Temperature[%d][%d]: %g\n", i, j, Temperature[i][j]);
                 return 0;

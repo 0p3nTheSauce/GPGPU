@@ -27,11 +27,11 @@
 #include <helper_cuda.h>
 #include <curand_kernel.h>
 
-#define COLUMNS    126
-#define ROWS       94
+#define COLUMNS    254
+#define ROWS       190
 
 #ifndef MAX_ITER
-#define MAX_ITER 1//100
+#define MAX_ITER 1
 #endif
 
 // largest permitted change in temp (This value takes about 3400 steps)
@@ -85,13 +85,13 @@ int main(int argc, char *argv[]) {
 
     //for printing 
     int fromRow = 0;
-    int toRow = 96;
-    int fromCol = 100;
-    int toCol = 128;
+    int toRow = 192;
+    int fromCol = 0;
+    int toCol = 29;
     initialize();                   // initialize Temp_last including boundary conditions
+    setTo(*Temperature, rows, cols, 0.0);
     printf("Temperature after initialization: ");
     printMatrixSubset(*Temperature, rows, cols, fromRow, toRow, fromCol, toCol);
-    setTo(*Temperature_last, rows, cols, 1.0);
     // printf("Temperature_last after initialization: ");
     // printMatrixSubset(*Temperature_last, rows, cols, fromRow, toRow, fromCol, toCol);
     //Transfer data from host to device
@@ -114,45 +114,45 @@ int main(int argc, char *argv[]) {
     //test if kernel working 
     //max_iterations = 1;
 
-    // // do until error is minimal or until max steps
-    // while ( dt > MAX_TEMP_ERROR && iteration <= max_iterations ) {
+    //do until error is minimal or until max steps
+    while ( dt > MAX_TEMP_ERROR && iteration <= max_iterations ) {
 
 
-    //     checkCudaErrors(cudaDeviceSynchronize());
-    //     // main calculation: average my four neighbors    
-    //     avn_tmpchng<<<grid, block>>>(d_Temp, d_Temp_last, rows, cols, d_dts, repKright ,repKdown);
-    //     checkCudaErrors(cudaGetLastError());
+        checkCudaErrors(cudaDeviceSynchronize());
+        // main calculation: average my four neighbors    
+        avn_tmpchng<<<grid, block>>>(d_Temp, d_Temp_last, rows, cols, d_dts, repKright ,repKdown);
+        checkCudaErrors(cudaGetLastError());
         
-    //     checkCudaErrors(cudaDeviceSynchronize());
-    //     checkCudaErrors(cudaMemcpy(Temperature, d_Temp, nBytes, cudaMemcpyDeviceToHost));
-    //     checkCudaErrors(cudaMemcpy(Temperature_last, d_Temp_last, nBytes, cudaMemcpyDeviceToHost));
-    //     // printf("Temperature after kernel: ");
-    //     // printMatrixSubset(*Temperature, rows, cols, fromRow, toRow, fromCol, toCol);
-    //     // printf("Temperature_last after kernel: ");
-    //     // printMatrixSubset(*Temperature_last, rows, cols, fromRow, toRow, fromCol, toCol);
+        checkCudaErrors(cudaDeviceSynchronize());
+        checkCudaErrors(cudaMemcpy(Temperature, d_Temp, nBytes, cudaMemcpyDeviceToHost));
+        checkCudaErrors(cudaMemcpy(Temperature_last, d_Temp_last, nBytes, cudaMemcpyDeviceToHost));
+        // printf("Temperature after kernel: ");
+        // printMatrixSubset(*Temperature, rows, cols, fromRow, toRow, fromCol, toCol);
+        // printf("Temperature_last after kernel: ");
+        // printMatrixSubset(*Temperature_last, rows, cols, fromRow, toRow, fromCol, toCol);
 
-    //     dt = 0.0; // reset largest temperature change
-    //     //checkCudaErrors(cudaMemset(d_dts, 0, nBytes));
+        dt = 0.0; // reset largest temperature change
+        //checkCudaErrors(cudaMemset(d_dts, 0, nBytes));
         
-    //     checkCudaErrors(cudaDeviceSynchronize());
-    //     //copy dts to host
-    //     checkCudaErrors(cudaMemcpy(h_dts, d_dts, nBytes, cudaMemcpyDeviceToHost));
-    //     //find dt
-    //     checkCudaErrors(cudaDeviceSynchronize());
-    //     for (int i = 0; i < nBytes; i++) {
-    //         dt = fmax(h_dts[i], dt);
-    //     }
+        checkCudaErrors(cudaDeviceSynchronize());
+        //copy dts to host
+        checkCudaErrors(cudaMemcpy(h_dts, d_dts, nBytes, cudaMemcpyDeviceToHost));
+        //find dt
+        checkCudaErrors(cudaDeviceSynchronize());
+        for (int i = 0; i < nBytes; i++) {
+            dt = fmax(h_dts[i], dt);
+        }
 
 
-    //     //periodically print test values
-    //     if((iteration % 100) == 0) {
-    //         checkCudaErrors(cudaMemcpy(Temperature, d_Temp, nBytes, cudaMemcpyDeviceToHost));
- 	//         track_progress(iteration); 
-    //     }
+        //periodically print test values
+        if((iteration % 100) == 0) {
+            checkCudaErrors(cudaMemcpy(Temperature, d_Temp, nBytes, cudaMemcpyDeviceToHost));
+ 	        track_progress(iteration); 
+        }
 
-	// iteration++;
-    // }
-    laplace(&dt, &iteration);
+	iteration++;
+    }
+    //laplace(&dt, &iteration);
 
     gettimeofday(&stop_time,NULL);
     //copy results back to host
@@ -190,7 +190,7 @@ __global__ void avn_tmpchng(double *Temp, double *Temp_last, int rows, int cols,
 {
     int ix = threadIdx.x + blockIdx.x * blockDim.x;
     int iy = threadIdx.y + blockIdx.y * blockDim.y;
-    int idx;
+    int idx = iy * cols + ix;
     double dt = 0;
     int moveR = 128;
     int moveD = 96;
@@ -205,7 +205,7 @@ __global__ void avn_tmpchng(double *Temp, double *Temp_last, int rows, int cols,
                 Temp_last[idx] = Temp[idx];
                 dts[idx] = dt;
             }
-            
+            dts[idx] = dt;
             ix += moveR;
         }
         iy += moveD;
@@ -264,7 +264,6 @@ int checkResult(){
     const double maxErr = 1e-9; // maximum error for floating point comparison
     memcpy(Temp_Temperature, Temperature, nBytes);
     initialize();
-    setTo(*Temperature_last, rows, cols, 1.0);
     laplace(&dt, &iteration);
     // printMatrix(*Temp_Temperature, ROWS+2, COLUMNS+2);
     for (i = 0; i < rows; i++){
@@ -306,11 +305,8 @@ void printMatrixSubset(double *matrix, int rows, int cols,
 
 //set all values of a matrix to same values
 void setTo(double *matrix, int rows, int cols, double val) {
-    int i, j;
-    for (i = 0; i < rows; i++){
-        for(j=0; j < cols; j++){
-            Temperature_last[i][j] = val;
-        }
+    for (int i = 0; i < rows * cols; i++) {
+        *(matrix + i) = val;
     }
 }
 //set all values of matrix to incrementing valeus

@@ -52,6 +52,13 @@ int **initHeap(int rows, int cols) {
     return matrix;
 }
 
+//set all values of a matrix to same values
+void setTo(int *matrix, int rows, int cols, int val) {
+    for (int i = 0; i < rows * cols; i++) {
+        *(matrix + i) = val;
+    }
+}
+
 int main(int argc, char **argv) {
     const int rows = 5;
     const int cols = 4;
@@ -69,7 +76,11 @@ int main(int argc, char **argv) {
     };
     printf("Matrix2: \n");
     printMatrixSPSub(3, 4, *matrix2, 1, 3, 2, 4);
-    printf("Matrix2[1][0]: %d", matrix2[1][0]);
+    printf("Matrix2[1][0]: %d\n", matrix2[1][0]);
+
+    setTo(&matrix2[0][0], 3, 4, 1);
+    //printMatrixSP(rows, cols, *matrix2);
+    printMatrixSPSub(3, 4, *matrix2, 0, 3, 0, 4);
 
     //clean up heap
     for (int row=0; row < rows; row++){
