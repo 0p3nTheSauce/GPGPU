@@ -31,7 +31,7 @@
 #define ROWS       1000
 
 #ifndef MAX_ITER
-#define MAX_ITER 100
+#define MAX_ITER 1
 #endif
 
 // largest permitted change in temp (This value takes about 3400 steps)
@@ -85,14 +85,15 @@ int main(int argc, char *argv[]) {
     memset(h_dts, 100, nBytes);
 
     //for printing 
-    int fromRow = 0;
-    int toRow = rows;
+    int fromRow = 0;//rows-29;
+    int toRow = 60;//rows;
     int fromCol = cols-29;
     int toCol = cols;
     initialize();                   // initialize Temp_last including boundary conditions
-    //setTo(*Temperature, rows, cols, 0.0);
-    printf("Temperature after initialization: ");
-    printMatrixSubset(*Temperature, rows, cols, fromRow, toRow, fromCol, toCol);
+    //setTo(*Temperature_last, rows, cols, 1.0);
+    // setToInc(*Temperature_last, rows, cols);
+    // printf("Temperature after initialization: ");
+    // printMatrixSubset(*Temperature, rows, cols, fromRow, toRow, fromCol, toCol);
     printf("Temperature_last after initialization: ");
     printMatrixSubset(*Temperature_last, rows, cols, fromRow, toRow, fromCol, toCol);
     //Transfer data from host to device
@@ -108,7 +109,7 @@ int main(int argc, char *argv[]) {
         workPT++; //round up
     }
 
-    //do until error is minimal or until max steps
+    // //do until error is minimal or until max steps
     while ( dt > MAX_TEMP_ERROR && iteration <= max_iterations ) {
 
 
@@ -118,7 +119,9 @@ int main(int argc, char *argv[]) {
         checkCudaErrors(cudaGetLastError());
         
         checkCudaErrors(cudaDeviceSynchronize());
-
+        checkCudaErrors(cudaMemcpy(Temperature, d_Temp, nBytes, cudaMemcpyDeviceToHost));
+        printf("Temperature after %d iterations: ", iteration);
+        printMatrixSubset(*Temperature, rows, cols, fromRow, toRow, fromCol, toCol);
         dt = 0.0; // reset largest temperature change
         
         //copy dts to host
@@ -143,11 +146,11 @@ int main(int argc, char *argv[]) {
     gettimeofday(&stop_time,NULL);
     //copy results back to host
     checkCudaErrors(cudaMemcpy(Temperature, d_Temp, nBytes, cudaMemcpyDeviceToHost));
-    checkCudaErrors(cudaMemcpy(Temperature_last, d_Temp_last, nBytes, cudaMemcpyDeviceToHost));
+    //checkCudaErrors(cudaMemcpy(Temperature_last, d_Temp_last, nBytes, cudaMemcpyDeviceToHost));
     printf("Temperature after laplace: ");
     printMatrixSubset(*Temperature, rows, cols, fromRow, toRow, fromCol, toCol);
-    printf("Temperature_last after laplace: ");
-    printMatrixSubset(*Temperature_last, rows, cols, fromRow, toRow, fromCol, toCol);
+    // printf("Temperature_last after laplace: ");
+    //printMatrixSubset(*Temperature_last, rows, cols, fromRow, toRow, fromCol, toCol);
 	timersub(&stop_time, &start_time, &elapsed_time); // Unix time subtract routine
 
     printf("\nMax error at iteration %d was %f\n", iteration-1, dt);
