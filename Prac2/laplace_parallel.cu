@@ -27,8 +27,8 @@
 #include <helper_cuda.h>
 #include <curand_kernel.h>
 
-#define COLUMNS    90
-#define ROWS       90
+#define COLUMNS    1000
+#define ROWS       1000
 
 #ifndef MAX_ITER
 #define MAX_ITER 100
@@ -82,6 +82,7 @@ int main(int argc, char *argv[]) {
     //malloc host dts
     double *h_dts;
     h_dts = (double *)malloc(nBytes);
+    memset(h_dts, 100, nBytes);
 
     //for printing 
     int fromRow = 0;
@@ -97,6 +98,7 @@ int main(int argc, char *argv[]) {
     //Transfer data from host to device
     checkCudaErrors(cudaMemcpy(d_Temp, Temperature, nBytes, cudaMemcpyHostToDevice));
     checkCudaErrors(cudaMemcpy(d_Temp_last, Temperature_last, nBytes, cudaMemcpyHostToDevice));
+    checkCudaErrors(cudaMemcpy(d_dts, h_dts, nBytes, cudaMemcpyHostToDevice));
     
     //setup kernel
     dim3 block(1024); //for testing, to change later
@@ -105,9 +107,6 @@ int main(int argc, char *argv[]) {
     if ((rows * cols) % 12288 != 0){
         workPT++; //round up
     }
-
-    //test if kernel working 
-    //max_iterations = 1;
 
     //do until error is minimal or until max steps
     while ( dt > MAX_TEMP_ERROR && iteration <= max_iterations ) {
@@ -119,25 +118,17 @@ int main(int argc, char *argv[]) {
         checkCudaErrors(cudaGetLastError());
         
         checkCudaErrors(cudaDeviceSynchronize());
-        checkCudaErrors(cudaMemcpy(Temperature, d_Temp, nBytes, cudaMemcpyDeviceToHost));
-        checkCudaErrors(cudaMemcpy(Temperature_last, d_Temp_last, nBytes, cudaMemcpyDeviceToHost));
-        // printf("Temperature after kernel: ");
-        // printMatrixSubset(*Temperature, rows, cols, fromRow, toRow, fromCol, toCol);
-        // printf("Temperature_last after kernel: ");
-        // printMatrixSubset(*Temperature_last, rows, cols, fromRow, toRow, fromCol, toCol);
 
         dt = 0.0; // reset largest temperature change
-        //checkCudaErrors(cudaMemset(d_dts, 0, nBytes));
         
-        checkCudaErrors(cudaDeviceSynchronize());
         //copy dts to host
         checkCudaErrors(cudaMemcpy(h_dts, d_dts, nBytes, cudaMemcpyDeviceToHost));
         //find dt
         checkCudaErrors(cudaDeviceSynchronize());
-        for (int i = 0; i < nBytes; i++) {
+        for (int i = 0; i < nelems; i++) {
             dt = fmax(h_dts[i], dt);
         }
-
+        checkCudaErrors(cudaMemset(d_dts, 0, nBytes));
 
         //periodically print test values
         if((iteration % 100) == 0) {
