@@ -31,7 +31,7 @@
 #define ROWS       1000
 
 #ifndef MAX_ITER
-#define MAX_ITER 1
+#define MAX_ITER 100
 #endif
 
 // largest permitted change in temp (This value takes about 3400 steps)
@@ -55,8 +55,11 @@ void setToInc(double *matrix, int rows, int cols);
 void laplace(double *dt, int *iteration);
 int checkResult();
 //Kernel prototypes
-__global__ void avn_tmpchng(double *Temp, double *Temp_last, int rows, int cols, double *dts,
-                            int workPT);
+// __global__ void avn_tmpchng(double *Temp, double *Temp_last, int rows, int cols, double *dts,
+//                             int workPT);
+__global__ void averageNeighbours(double *Temp, double *Temp_last, int rows, int cols, int workPT);
+__global__ void temperatureChange(double *Temp, double *Temp_last, int rows, int cols,
+                                double *dts, int workPT);
 
 int main(int argc, char *argv[]) {
 
@@ -115,10 +118,14 @@ int main(int argc, char *argv[]) {
 
         checkCudaErrors(cudaDeviceSynchronize());
         // main calculation: average my four neighbors    
-        avn_tmpchng<<<grid, block>>>(d_Temp, d_Temp_last, rows, cols, d_dts, workPT);
+        averageNeighbours<<<grid, block>>>(d_Temp, d_Temp_last, rows, cols, workPT);
         checkCudaErrors(cudaGetLastError());
-        
         checkCudaErrors(cudaDeviceSynchronize());
+        //calculate temperature change and reset temperature last for next iteration
+        temperatureChange<<<grid, block>>>(d_Temp ,d_Temp_last, rows, cols, d_dts, workPT);
+        checkCudaErrors(cudaGetLastError());
+        checkCudaErrors(cudaDeviceSynchronize());
+
         checkCudaErrors(cudaMemcpy(Temperature, d_Temp, nBytes, cudaMemcpyDeviceToHost));
         printf("Temperature after %d iterations: ", iteration);
         printMatrixSubset(*Temperature, rows, cols, fromRow, toRow, fromCol, toCol);
@@ -174,7 +181,45 @@ int main(int argc, char *argv[]) {
     exit(0);
 }
 
-__global__ void avn_tmpchng(double *Temp, double *Temp_last, int rows, int cols,
+// __global__ void avn_tmpchng(double *Temp, double *Temp_last, int rows, int cols,
+//                             double *dts, int workPT)
+// {
+//     int ix = threadIdx.x + blockIdx.x * blockDim.x;
+//     int iy = threadIdx.y + blockIdx.y * blockDim.y;
+//     int tid = iy * cols + ix;
+//     double dt = 0;
+    
+//     int startIdx = tid * workPT;
+//     for (int idx = startIdx; idx < startIdx + workPT; idx++){
+//         if (idx > cols && idx < (cols * (rows - 1)) && idx % cols != 0 && (idx+1) % cols != 0 ) {
+//             Temp[idx] = 0.25 * (Temp_last[idx+1] + Temp_last[idx-1] +
+//                                     Temp_last[idx+cols] + Temp_last[idx-cols]);
+//             dt = fmax(fabs(Temp[idx] - Temp_last[idx]), dt);
+//             Temp_last[idx] = Temp[idx];
+//             //Temp[idx] = 1.11; 
+//         }
+//         if (idx < cols * rows){
+//             dts[idx] = dt;
+//         }
+        
+//     }
+// }
+
+__global__ void averageNeighbours(double *Temp, double *Temp_last, int rows, int cols, int workPT)
+{
+    int ix = threadIdx.x + blockIdx.x * blockDim.x;
+    int iy = threadIdx.y + blockIdx.y * blockDim.y;
+    int tid = iy * cols + ix;
+    int startIdx = tid * workPT;
+    for (int idx = startIdx; idx < startIdx + workPT; idx++){
+        if (idx > cols && idx < (cols * (rows - 1)) && idx % cols != 0 && (idx+1) % cols != 0 ) {
+            Temp[idx] = 0.25 * (Temp_last[idx+1] + Temp_last[idx-1] +
+                                    Temp_last[idx+cols] + Temp_last[idx-cols]);
+        }
+    }
+}
+
+__global__ void temperatureChange(double *Temp, double *Temp_last, int rows, int cols,
                             double *dts, int workPT)
 {
     int ix = threadIdx.x + blockIdx.x * blockDim.x;
@@ -185,8 +230,6 @@ __global__ void avn_tmpchng(double *Temp, double *Temp_last, int rows, int cols,
     int startIdx = tid * workPT;
     for (int idx = startIdx; idx < startIdx + workPT; idx++){
         if (idx > cols && idx < (cols * (rows - 1)) && idx % cols != 0 && (idx+1) % cols != 0 ) {
-            Temp[idx] = 0.25 * (Temp_last[idx+1] + Temp_last[idx-1] +
-                                    Temp_last[idx+cols] + Temp_last[idx-cols]);
             dt = fmax(fabs(Temp[idx] - Temp_last[idx]), dt);
             Temp_last[idx] = Temp[idx];
             //Temp[idx] = 1.11; 
@@ -194,10 +237,8 @@ __global__ void avn_tmpchng(double *Temp, double *Temp_last, int rows, int cols,
         if (idx < cols * rows){
             dts[idx] = dt;
         }
-        
     }
 }
-
 
 //laplace algorithm as a function
 void laplace(double *dt, int *iteration) {
