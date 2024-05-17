@@ -102,10 +102,10 @@ int main(int argc, char *argv[]) {
     //         }
     //     }
         
-    //     // periodically print test values
-    //     if((iteration % 100) == 0) {
- 	//     track_progress(iteration);
-    //     }
+        // // periodically print test values
+        // if((iteration % 100) == 0) {
+ 	    // track_progress(iteration);
+        // }
 
 	// iteration++;
     // }
