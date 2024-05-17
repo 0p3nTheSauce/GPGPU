@@ -28,8 +28,8 @@
 #include <string.h>
 
 // size of plate
-#define COLUMNS    126
-#define ROWS       94
+#define COLUMNS    1000
+#define ROWS       1000
 
 #ifndef MAX_ITER
 #define MAX_ITER 100
@@ -74,46 +74,9 @@ int main(int argc, char *argv[]) {
     gettimeofday(&start_time,NULL); // Unix timer
 
     initialize();                   // initialize Temp_last including boundary conditions
-    printf("Temperature after initialization: \n");
-    printMatrixSubset(*Temperature, rows, cols, fromRow, toRow, fromCol, toCol);
-    printf("Temperature_last after initialization: \n");
-    printMatrixSubset(*Temperature_last, rows, cols, fromRow, toRow, fromCol, toCol);
-    //printMatrix(*Temperature_last, ROWS+2,COLUMNS+2 );
-
-
-    // // do until error is minimal or until max steps
-    // while ( dt > MAX_TEMP_ERROR && iteration <= max_iterations ) {
-
-    //     // main calculation: average my four neighbors    
-    //     for(i = 1; i <= ROWS; i++) {
-    //         for(j = 1; j <= COLUMNS; j++) {
-    //             Temperature[i][j] = 0.25 * (Temperature_last[i+1][j] + Temperature_last[i-1][j] +
-    //                                         Temperature_last[i][j+1] + Temperature_last[i][j-1]);
-    //         }
-    //     }
-        
-    //     dt = 0.0; // reset largest temperature change
-
-    //     // copy grid to old grid for next iteration and find latest dt
-    //     for(i = 1; i <= ROWS; i++){
-    //         for(j = 1; j <= COLUMNS; j++){
-	//       dt = fmax( fabs(Temperature[i][j]-Temperature_last[i][j]), dt);
-	//       Temperature_last[i][j] = Temperature[i][j];
-    //         }
-    //     }
-        
-        // // periodically print test values
-        // if((iteration % 100) == 0) {
- 	    // track_progress(iteration);
-        // }
-
-	// iteration++;
-    // }
 
     laplace(&dt, &iteration);
 
-    printf("Temperature after laplace: \n");
-    printMatrixSubset(*Temperature, rows, cols, fromRow, toRow, fromCol, toCol);
     printf("Check result: \n");
     if (checkResult()){
         printf("Results correct\n");
